@@ -2,7 +2,7 @@
 
 (function() {
 
-  var t = TrelloPowerUp.iframe();
+  var t = TrelloPowerUp.iframe({ appKey: "526d48a7eb9050082ce280fe0ac1a67f", appName: "Time in List" });
 
   t.render(function() {
     return t.card('id', 'name').then(function(card) {
