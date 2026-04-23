@@ -1,6 +1,6 @@
 /* ---- Trello Time in List — connector.js ---- */
 
-var API_KEY = 'YOUR_API_KEY_HERE'; // Trello API key (public)
+var API_KEY = '526d48a7eb9050082ce280fe0ac1a67f'; // Trello API key (public)
 
 TrelloPowerUp.initialize({
 
