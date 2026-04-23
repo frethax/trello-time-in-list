@@ -25,7 +25,7 @@
           renderAuth(t);
         } else {
           document.getElementById('root').innerHTML =
-            '<div class="empty">Veri yüklenemedi. Lütfen sayfayı yenileyin.</div>';
+            '<div class="empty">Could not load data. Please refresh.</div>';
         }
       });
     });
@@ -36,7 +36,7 @@
     root.innerHTML = '';
 
     var btn = document.createElement('button');
-    btn.innerText = '🔗 Trello hesabını bağla';
+    btn.innerText = '🔗 Connect your Trello account';
     btn.style.cssText = [
       'background:#0052cc','color:white','border:none',
       'padding:8px 16px','border-radius:6px','font-size:13px',
@@ -58,7 +58,7 @@
   function renderSection(card, actions, cardData) {
     if (!actions || !actions.length) {
       document.getElementById('root').innerHTML =
-        '<div class="empty">Bu kart için aksiyon verisi bulunamadı.</div>';
+        '<div class="empty">No action data found for this card.</div>';
       t.sizeTo('#root');
       return;
     }
@@ -107,10 +107,10 @@
     right.className = 'card right-card';
 
     if (!timeline.length) {
-      right.innerHTML = '<div class="empty">Henüz liste değişimi yok.</div>';
+      right.innerHTML = '<div class="empty">No list changes yet.</div>';
     } else {
       // Totals bars
-      var barsHtml = '<div class="section-title">Toplam Süre</div>';
+      var barsHtml = '<div class="section-title">Time per list</div>';
       listKeys.forEach(function(list, i) {
         var color = colorMap[list];
         var pct   = grandTotal > 0 ? (totals[list] / grandTotal * 100) : 0;
@@ -137,7 +137,7 @@
 
       var histTitle = document.createElement('div');
       histTitle.className = 'history-title';
-      histTitle.innerHTML = '<span class="history-label">📋 Kart Geçmişi</span><span class="arrow" id="arrow">▶</span>';
+      histTitle.innerHTML = '<span class="history-label">📋 Card History</span><span class="arrow" id="arrow">▶</span>';
       right.appendChild(histTitle);
 
       var tlList = document.createElement('div');
