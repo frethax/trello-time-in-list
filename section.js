@@ -20,32 +20,25 @@
       .then(function(actions) {
         if (!actions || !actions.length) {
           document.getElementById('root').innerHTML =
-            '<div class="empty">No action data found for this card.</div>';
+            '<div style="font-size:12px;color:#5e6c84;padding:8px">No action data found for this card.</div>';
           t.sizeTo('#root');
           return;
         }
 
-        var ordered  = actions.slice().reverse();
-
-        // Current stage
-        var moveActions = ordered.filter(function(a){ return a.data && a.data.listAfter; });
+        var ordered = actions.slice().reverse();
+        var moveActions  = ordered.filter(function(a){ return a.data && a.data.listAfter; });
         var createAction = ordered.find(function(a){ return a.type === 'createCard'; });
 
         var lastMove = moveActions.length ? moveActions[moveActions.length-1] : (createAction || ordered[ordered.length-1]);
         var currentList = (lastMove.data && lastMove.data.listAfter) ? lastMove.data.listAfter.name : 'Unknown';
         var currentStageTime = Date.now() - new Date(lastMove.date);
+        var totalTime = Date.now() - new Date(ordered[0].date);
 
-        // Total time
-        var firstAction = ordered[0];
-        var totalTime = Date.now() - new Date(firstAction.date);
-
-        // Created by
         var createdBy = '';
         if (createAction && createAction.memberCreator) {
           createdBy = createAction.memberCreator.fullName || createAction.memberCreator.username || '';
         }
 
-        // Most active
         var activityCount = {};
         ordered.forEach(function(a) {
           if (a.memberCreator) {
@@ -53,16 +46,11 @@
             if (name) activityCount[name] = (activityCount[name] || 0) + 1;
           }
         });
-        var mostActive = '';
-        var mostActiveCount = 0;
+        var mostActive = '', mostActiveCount = 0;
         Object.keys(activityCount).forEach(function(name) {
-          if (activityCount[name] > mostActiveCount) {
-            mostActive = name;
-            mostActiveCount = activityCount[name];
-          }
+          if (activityCount[name] > mostActiveCount) { mostActive = name; mostActiveCount = activityCount[name]; }
         });
 
-        // Timeline
         var timeline = buildTimeline(ordered);
         var totals   = buildTotals(timeline);
         var listKeys = Object.keys(totals);
@@ -71,67 +59,77 @@
         var colorMap = {};
         listKeys.forEach(function(list, i){ colorMap[list] = COLORS[i % COLORS.length]; });
 
-        // Build UI
         var root = document.getElementById('root');
         root.innerHTML = '';
 
         var wrapper = document.createElement('div');
-        wrapper.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;';
+        wrapper.style.cssText = [
+          'display:grid',
+          'grid-template-columns:1fr 1fr',
+          'gap:8px',
+          'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+          'padding:2px'
+        ].join(';');
 
-        // LEFT PANEL
+        /* ---- LEFT ---- */
         var left = document.createElement('div');
-        left.style.cssText = 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:12px;';
+        left.style.cssText = 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;';
+
+        function leftRow(icon, label, value, valueColor, isLast) {
+          return [
+            '<div style="' + (isLast ? '' : 'margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #dfe1e6;') + '">',
+              '<div style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">' + icon + ' ' + label + '</div>',
+              value,
+            '</div>'
+          ].join('');
+        }
 
         var leftHTML = '';
 
         // Current Stage
-        leftHTML += '<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #dfe1e6">';
-        leftHTML += '<div style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">⏱ Current Stage</div>';
-        leftHTML += '<div style="font-size:13px;font-weight:600;color:#172b4d;margin-bottom:1px">' + escHtml(currentList) + '</div>';
-        leftHTML += '<div style="font-size:16px;font-weight:700;color:#2ea043">' + formatTime(currentStageTime) + '</div>';
-        leftHTML += '</div>';
+        leftHTML += leftRow('⏱', 'Current Stage',
+          '<div style="font-size:13px;font-weight:600;color:#172b4d;margin-bottom:2px">' + escHtml(currentList) + '</div>' +
+          '<div style="font-size:20px;font-weight:700;color:#2ea043;line-height:1.2">' + formatTime(currentStageTime) + '</div>',
+          '', false);
 
-        // Card Age (total)
-        leftHTML += '<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #dfe1e6">';
-        leftHTML += '<div style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">📊 Card Age</div>';
-        leftHTML += '<div style="font-size:16px;font-weight:700;color:#0052cc">' + formatTime(totalTime) + '</div>';
-        leftHTML += '</div>';
+        // Card Age
+        leftHTML += leftRow('📊', 'Card Age',
+          '<div style="font-size:20px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>',
+          '', false);
 
         // Most Active
         if (mostActive) {
-          leftHTML += '<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #dfe1e6">';
-          leftHTML += '<div style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">👤 Most Active</div>';
-          leftHTML += '<div style="font-size:13px;font-weight:600;color:#172b4d">' + escHtml(mostActive) + ' (' + mostActiveCount + ')</div>';
-          leftHTML += '</div>';
+          leftHTML += leftRow('👤', 'Most Active',
+            '<div style="font-size:14px;font-weight:600;color:#172b4d">' + escHtml(mostActive) + ' <span style="color:#5e6c84;font-weight:400">(' + mostActiveCount + ')</span></div>',
+            '', !createdBy);
         }
 
         // Created By
         if (createdBy) {
-          leftHTML += '<div>';
-          leftHTML += '<div style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">⭐ Created By</div>';
-          leftHTML += '<div style="font-size:13px;font-weight:600;color:#172b4d">' + escHtml(createdBy) + '</div>';
-          leftHTML += '</div>';
+          leftHTML += leftRow('⭐', 'Created By',
+            '<div style="font-size:14px;font-weight:600;color:#172b4d">' + escHtml(createdBy) + '</div>',
+            '', true);
         }
 
         left.innerHTML = leftHTML;
 
-        // RIGHT PANEL
+        /* ---- RIGHT ---- */
         var right = document.createElement('div');
-        right.style.cssText = 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:12px;';
+        right.style.cssText = 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;';
 
         if (!timeline.length) {
           right.innerHTML = '<div style="font-size:12px;color:#5e6c84">No list changes yet.</div>';
         } else {
-          var rightHTML = '<div style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">📋 Time Per List</div>';
+          var rightHTML = '<div style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">📋 Time Per List</div>';
 
           listKeys.forEach(function(list) {
             var color = colorMap[list];
             var pct   = grandTotal > 0 ? (totals[list] / grandTotal * 100) : 0;
-            rightHTML += '<div style="margin-bottom:7px">';
-            rightHTML += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">';
-            rightHTML += '<span style="font-size:11px;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%">' + escHtml(list) + '</span>';
-            rightHTML += '<div style="display:flex;gap:5px;align-items:center;flex-shrink:0">';
-            rightHTML += '<span style="font-size:10px;font-weight:700;color:' + color + '">' + Math.round(pct) + '%</span>';
+            rightHTML += '<div style="margin-bottom:9px">';
+            rightHTML += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">';
+            rightHTML += '<span style="font-size:12px;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52%;font-weight:500">' + escHtml(list) + '</span>';
+            rightHTML += '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">';
+            rightHTML += '<span style="font-size:11px;font-weight:700;color:' + color + '">' + Math.round(pct) + '%</span>';
             rightHTML += '<span style="font-size:11px;color:#5e6c84;white-space:nowrap">' + formatTime(totals[list]) + '</span>';
             rightHTML += '</div></div>';
             rightHTML += '<div style="height:6px;background:#dfe1e6;border-radius:6px;overflow:hidden">';
@@ -141,17 +139,17 @@
 
           right.innerHTML = rightHTML;
 
-          // Card History collapsible
           var divider = document.createElement('div');
-          divider.style.cssText = 'border-top:1px solid #dfe1e6;margin:8px 0;';
+          divider.style.cssText = 'border-top:1px solid #dfe1e6;margin:10px 0 8px;';
           right.appendChild(divider);
 
           var histTitle = document.createElement('div');
           histTitle.style.cssText = 'display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;';
-          histTitle.innerHTML = '<span style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.5px">≡ Card History</span><span id="arrow" style="font-size:9px;color:#5e6c84;transition:transform 0.2s">▶</span>';
+          histTitle.innerHTML = '<span style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px">≡ Card History</span><span id="tl-arrow" style="font-size:9px;color:#5e6c84;transition:transform 0.2s">▶</span>';
           right.appendChild(histTitle);
 
           var tlList = document.createElement('div');
+          tlList.id = 'tl-list';
           tlList.style.cssText = 'overflow:hidden;max-height:0;transition:max-height 0.25s ease,margin-top 0.25s ease;margin-top:0;';
 
           timeline.forEach(function(item, idx) {
@@ -165,7 +163,7 @@
                 '<div style="width:2px;flex:1;background:' + (isLast?'transparent':'#dfe1e6') + ';margin-top:3px"></div>',
               '</div>',
               '<div style="flex:1;min-width:0">',
-                '<div style="font-size:11px;font-weight:600;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(item.list) + '</div>',
+                '<div style="font-size:12px;font-weight:600;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(item.list) + '</div>',
                 '<div style="font-size:10px;color:#5e6c84;margin-top:1px">' + (item.date ? formatDate(item.date) + ' · ' : '') + formatTime(item.duration) + '</div>',
               '</div>'
             ].join('');
@@ -177,14 +175,15 @@
           var open = false;
           histTitle.addEventListener('click', function() {
             open = !open;
-            var arrow = document.getElementById('arrow');
+            var arrow = document.getElementById('tl-arrow');
+            var list  = document.getElementById('tl-list');
             if (open) {
-              tlList.style.maxHeight = tlList.scrollHeight + 'px';
-              tlList.style.marginTop = '8px';
+              list.style.maxHeight = list.scrollHeight + 'px';
+              list.style.marginTop = '8px';
               if (arrow) arrow.style.transform = 'rotate(90deg)';
             } else {
-              tlList.style.maxHeight = '0';
-              tlList.style.marginTop = '0';
+              list.style.maxHeight = '0';
+              list.style.marginTop = '0';
               if (arrow) arrow.style.transform = 'rotate(0deg)';
             }
             setTimeout(function(){ t.sizeTo('#root'); }, 300);
@@ -196,9 +195,9 @@
         root.appendChild(wrapper);
         t.sizeTo('#root');
       })
-      .catch(function(err) {
+      .catch(function() {
         document.getElementById('root').innerHTML =
-          '<div class="empty">Could not load data. Please refresh.</div>';
+          '<div style="font-size:12px;color:#5e6c84;padding:8px">Could not load data. Please refresh.</div>';
         t.sizeTo('#root');
       });
     });
@@ -209,14 +208,14 @@
     var hours   = Math.floor(ms / (1000 * 60 * 60));
     var days    = Math.floor(hours / 24);
     var rest    = hours % 24;
-    if (minutes < 60) return minutes + 'm';
-    if (days > 0 && rest > 0) return days + 'd ' + rest + 'h';
-    if (days > 0) return days + 'd';
-    return hours + 'h';
+    if (minutes < 60) return minutes + ' minutes';
+    if (days > 0 && rest > 0) return days + ' days ' + rest + ' hours';
+    if (days > 0) return days + ' days';
+    return hours + ' hours';
   }
 
   function formatDate(d) {
-    var dt = new Date(d);
+    var dt  = new Date(d);
     var day = String(dt.getDate()).padStart(2,'0');
     var mon = String(dt.getMonth()+1).padStart(2,'0');
     var h   = String(dt.getHours()).padStart(2,'0');
@@ -225,25 +224,20 @@
   }
 
   function buildTimeline(actions) {
-    var timeline = [];
-    var createAction = null;
-    var moveActions  = [];
+    var timeline = [], createAction = null, moveActions = [];
     actions.forEach(function(a) {
       if (a.type === 'createCard') createAction = a;
       else if (a.data && a.data.listAfter) moveActions.push(a);
     });
     if (createAction && moveActions.length) {
-      var initialList = (createAction.data && createAction.data.list)
+      var init = (createAction.data && createAction.data.list)
         ? createAction.data.list.name
         : (moveActions[0].data.listBefore && moveActions[0].data.listBefore.name);
-      if (initialList) {
-        timeline.push({ list: initialList, date: new Date(createAction.date), duration: new Date(moveActions[0].date) - new Date(createAction.date) });
-      }
+      if (init) timeline.push({ list: init, date: new Date(createAction.date), duration: new Date(moveActions[0].date) - new Date(createAction.date) });
     }
     for (var i = 0; i < moveActions.length - 1; i++) {
-      var a = moveActions[i], b = moveActions[i+1];
-      var diff = new Date(b.date) - new Date(a.date);
-      if (diff > 0) timeline.push({ list: a.data.listAfter.name, date: new Date(a.date), duration: diff });
+      var diff = new Date(moveActions[i+1].date) - new Date(moveActions[i].date);
+      if (diff > 0) timeline.push({ list: moveActions[i].data.listAfter.name, date: new Date(moveActions[i].date), duration: diff });
     }
     if (moveActions.length) {
       var last = moveActions[moveActions.length-1];
@@ -254,10 +248,7 @@
 
   function buildTotals(timeline) {
     var totals = {};
-    timeline.forEach(function(t) {
-      if (!totals[t.list]) totals[t.list] = 0;
-      totals[t.list] += t.duration;
-    });
+    timeline.forEach(function(t) { totals[t.list] = (totals[t.list] || 0) + t.duration; });
     return totals;
   }
 
