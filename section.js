@@ -3,7 +3,7 @@
 (function() {
 
   var API_KEY = '526d48a7eb9050082ce280fe0ac1a67f';
-
+var TOKEN = 'ATTAb3f19050ede7315f2f82e741927c18df02df27bcb298ea151a7f956bd366c9acFAC5ADD9';
   var t = TrelloPowerUp.iframe({
     appKey:  API_KEY,
     appName: 'Time in List'
@@ -13,7 +13,7 @@
     return t.card('id').then(function(card) {
       return fetch(
         'https://api.trello.com/1/cards/' + card.id +
-        '/actions?filter=updateCard:idList,createCard&key=' + API_KEY
+        '/actions?filter=updateCard:idList,createCard&key=' + API_KEY + '&token=' + TOKEN
       )
       .then(function(r) { return r.json(); })
       .then(function(actions) {
