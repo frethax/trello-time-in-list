@@ -10,8 +10,8 @@
   });
 
   t.render(function() {
-    return t.getRestApi()
-      .then(function(api) { return api.getToken(); })
+    var restApi = t.getRestApi();
+    return restApi.getToken()
       .then(function(token) {
         if (!token) { return showAuth(); }
         return loadCard(token);
@@ -32,25 +32,12 @@
 
     var btn = document.createElement('button');
     btn.innerText = 'Connect Trello Account';
-    btn.style.cssText = [
-      'background:#0052cc',
-      'color:white',
-      'border:none',
-      'padding:8px 16px',
-      'border-radius:4px',
-      'font-size:13px',
-      'font-weight:600',
-      'cursor:pointer'
-    ].join(';');
+    btn.style.cssText = 'background:#0052cc;color:white;border:none;padding:8px 16px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer';
 
     btn.addEventListener('click', function() {
-      t.getRestApi()
-        .then(function(api) {
-          return api.authorize({ scope: 'read', expiration: 'never' });
-        })
-        .then(function() {
-          t.render(function() {});
-        });
+      var restApi = t.getRestApi();
+      restApi.authorize({ scope: 'read', expiration: 'never' })
+        .then(function() { t.render(function() {}); });
     });
 
     wrap.appendChild(msg);
@@ -120,7 +107,6 @@
     var wrapper = document.createElement('div');
     wrapper.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:2px';
 
-    /* ---- LEFT ---- */
     var left = document.createElement('div');
     left.style.cssText = 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;';
 
@@ -134,32 +120,22 @@
     }
 
     var leftHTML = '';
-
     leftHTML += leftRow('⏱', 'Current Stage',
       '<div style="font-size:13px;font-weight:600;color:#172b4d;margin-bottom:2px">' + escHtml(currentList) + '</div>' +
-      '<div style="font-size:20px;font-weight:700;color:#2ea043;line-height:1.2">' + formatTime(currentStageTime) + '</div>',
-      false);
-
+      '<div style="font-size:20px;font-weight:700;color:#2ea043;line-height:1.2">' + formatTime(currentStageTime) + '</div>', false);
     leftHTML += leftRow('📊', 'Card Age',
-      '<div style="font-size:20px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>',
-      false);
-
+      '<div style="font-size:20px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>', false);
     if (mostActive) {
       leftHTML += leftRow('👤', 'Most Active',
         '<div style="font-size:14px;font-weight:600;color:#172b4d">' + escHtml(mostActive) +
-        ' <span style="color:#5e6c84;font-weight:400">(' + mostActiveCount + ')</span></div>',
-        !createdBy);
+        ' <span style="color:#5e6c84;font-weight:400">(' + mostActiveCount + ')</span></div>', !createdBy);
     }
-
     if (createdBy) {
       leftHTML += leftRow('⭐', 'Created By',
-        '<div style="font-size:14px;font-weight:600;color:#172b4d">' + escHtml(createdBy) + '</div>',
-        true);
+        '<div style="font-size:14px;font-weight:600;color:#172b4d">' + escHtml(createdBy) + '</div>', true);
     }
-
     left.innerHTML = leftHTML;
 
-    /* ---- RIGHT ---- */
     var right = document.createElement('div');
     right.style.cssText = 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;';
 
@@ -167,22 +143,15 @@
       right.innerHTML = '<div style="font-size:12px;color:#5e6c84">No list changes yet.</div>';
     } else {
       var rightHTML = '<div style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">📋 Time Per List</div>';
-
       listKeys.forEach(function(list) {
         var color = colorMap[list];
         var pct   = grandTotal > 0 ? (totals[list] / grandTotal * 100) : 0;
-        rightHTML += '<div style="margin-bottom:9px">';
-        rightHTML += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">';
+        rightHTML += '<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">';
         rightHTML += '<span style="font-size:12px;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52%;font-weight:500">' + escHtml(list) + '</span>';
-        rightHTML += '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">';
-        rightHTML += '<span style="font-size:11px;font-weight:700;color:' + color + '">' + Math.round(pct) + '%</span>';
-        rightHTML += '<span style="font-size:11px;color:#5e6c84;white-space:nowrap">' + formatTime(totals[list]) + '</span>';
-        rightHTML += '</div></div>';
-        rightHTML += '<div style="height:6px;background:#dfe1e6;border-radius:6px;overflow:hidden">';
-        rightHTML += '<div style="height:100%;background:' + color + ';width:' + pct + '%;border-radius:6px"></div>';
-        rightHTML += '</div></div>';
+        rightHTML += '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0"><span style="font-size:11px;font-weight:700;color:' + color + '">' + Math.round(pct) + '%</span>';
+        rightHTML += '<span style="font-size:11px;color:#5e6c84;white-space:nowrap">' + formatTime(totals[list]) + '</span></div></div>';
+        rightHTML += '<div style="height:6px;background:#dfe1e6;border-radius:6px;overflow:hidden"><div style="height:100%;background:' + color + ';width:' + pct + '%;border-radius:6px"></div></div></div>';
       });
-
       right.innerHTML = rightHTML;
 
       var divider = document.createElement('div');
@@ -215,7 +184,6 @@
         ].join('');
         tlList.appendChild(el);
       });
-
       right.appendChild(tlList);
 
       var open = false;
