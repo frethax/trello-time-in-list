@@ -6,7 +6,7 @@ TrelloPowerUp.initialize({
 
   'card-back-section': function(t, options) {
     return {
-      title: 'Trello Time in List',
+      title: 'Time in List',
       icon:  'https://trello-time-in-list.vercel.app/icon.png',
       content: {
         type:   'iframe',
@@ -17,6 +17,10 @@ TrelloPowerUp.initialize({
   }
 
 }, {
-  appKey:  API_KEY,
-  appName: 'Trello Time in List'
+  appKey:   API_KEY,
+  appName:  'Time in List',
+  apiOrigin: 'https://api.trello.com',
+  authorizeName: 'Time in List',
+  authorizeButton: true,
+  scope: { read: true }
 });
