@@ -72,8 +72,11 @@
     var createAction = ordered.find(function(a){ return a.type === 'createCard'; });
 
     var lastMove = moveActions.length ? moveActions[moveActions.length-1] : (createAction || ordered[ordered.length-1]);
-    var currentList = (lastMove.data && lastMove.data.listAfter) ? lastMove.data.listAfter.name : 'Unknown';
-    var currentStageTime = Date.now() - new Date(lastMove.date);
+var currentList = (lastMove.data && lastMove.data.listAfter) 
+  ? lastMove.data.listAfter.name 
+  : (createAction && createAction.data && createAction.data.list 
+    ? createAction.data.list.name 
+    : 'Unknown');    var currentStageTime = Date.now() - new Date(lastMove.date);
     var totalTime = Date.now() - new Date(ordered[0].date);
 
     var createdBy = '';
