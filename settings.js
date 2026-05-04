@@ -4,46 +4,10 @@ var API_KEY = '526d48a7eb9050082ce280fe0ac1a67f';
 var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'Time in List' });
 
 var STRINGS = {
-  en: {
-    langTitle:   'Language',
-    listsTitle:  'List Settings',
-    flagLabel:   '🚩 Flag after',
-    days:        'days',
-    doneLabel:   '✓ Done',
-    save:        'Save Settings',
-    loading:     'Loading...',
-    error:       'Could not load lists. Please reconnect your account.'
-  },
-  tr: {
-    langTitle:   'Dil',
-    listsTitle:  'Liste Ayarları',
-    flagLabel:   '🚩 Uyar',
-    days:        'günden sonra',
-    doneLabel:   '✓ Tamamlandı',
-    save:        'Kaydet',
-    loading:     'Yükleniyor...',
-    error:       'Listeler yüklenemedi. Lütfen hesabınızı yeniden bağlayın.'
-  },
-  es: {
-    langTitle:   'Idioma',
-    listsTitle:  'Configuración de listas',
-    flagLabel:   '🚩 Marcar tras',
-    days:        'días',
-    doneLabel:   '✓ Hecho',
-    save:        'Guardar',
-    loading:     'Cargando...',
-    error:       'No se pudieron cargar las listas. Vuelve a conectar tu cuenta.'
-  },
-  pt: {
-    langTitle:   'Idioma',
-    listsTitle:  'Configurações de listas',
-    flagLabel:   '🚩 Sinalizar após',
-    days:        'dias',
-    doneLabel:   '✓ Concluído',
-    save:        'Salvar',
-    loading:     'Carregando...',
-    error:       'Não foi possível carregar as listas. Reconecte sua conta.'
-  }
+  en: { langTitle:'Language', listsTitle:'List Settings', days:'days', doneLabel:'✓ Done', save:'Save Settings', loading:'Loading...', error:'Could not load lists. Please reconnect your account.' },
+  tr: { langTitle:'Dil', listsTitle:'Liste Ayarları', days:'gün', doneLabel:'✓ Tamamlandı', save:'Kaydet', loading:'Yükleniyor...', error:'Listeler yüklenemedi. Lütfen hesabınızı yeniden bağlayın.' },
+  es: { langTitle:'Idioma', listsTitle:'Configuración de listas', days:'días', doneLabel:'✓ Hecho', save:'Guardar', loading:'Cargando...', error:'No se pudieron cargar las listas.' },
+  pt: { langTitle:'Idioma', listsTitle:'Configurações de listas', days:'dias', doneLabel:'✓ Concluído', save:'Salvar', loading:'Carregando...', error:'Não foi possível carregar as listas.' }
 };
 
 var LANGS = [
@@ -53,9 +17,7 @@ var LANGS = [
   { code: 'pt', label: 'Português' }
 ];
 
-var currentLang  = 'en';
-var boardLists   = [];
-var listSettings = {};
+var currentLang = 'en', boardLists = [], listSettings = {};
 
 window.setLang = function(lang) {
   currentLang = lang;
@@ -75,6 +37,15 @@ function applyStrings() {
   if (saveBtn) saveBtn.innerText = s.save;
 }
 
+function updatePill(input) {
+  var pill = input.closest ? input.closest('.flag-pill') : input.parentNode;
+  if (input.value && parseInt(input.value) > 0) {
+    pill.className = 'flag-pill active';
+  } else {
+    pill.className = 'flag-pill';
+  }
+}
+
 function renderLists() {
   var s = STRINGS[currentLang];
   var container = document.getElementById('lists');
@@ -86,68 +57,65 @@ function renderLists() {
     var item = document.createElement('div');
     item.className = 'list-item';
 
-    // Name row
-    var nameSpan = document.createElement('div');
+    var nameSpan = document.createElement('span');
     nameSpan.className = 'list-name';
     nameSpan.innerText = list.name;
     nameSpan.title = list.name;
 
-    // Controls row
     var controls = document.createElement('div');
     controls.className = 'item-controls';
 
-    // Flag section
-    var flagWrap = document.createElement('div');
-    flagWrap.className = 'control-group';
+    // Flag pill
+    var pill = document.createElement('div');
+    pill.className = 'flag-pill' + (saved.threshold ? ' active' : '');
 
-    var flagLabel = document.createElement('span');
-    flagLabel.className = 'control-label';
-    flagLabel.innerText = s.flagLabel;
+    var flagIcon = document.createElement('span');
+    flagIcon.className = 'flag-icon';
+    flagIcon.innerText = '🚩';
 
-    var thresholdInput = document.createElement('input');
-    thresholdInput.type = 'number';
-    thresholdInput.min = '1';
-    thresholdInput.max = '999';
-    thresholdInput.placeholder = '—';
-    thresholdInput.value = saved.threshold || '';
-    thresholdInput.dataset.name = list.name;
-    thresholdInput.className = 'threshold-input';
+    var input = document.createElement('input');
+    input.type = 'number';
+    input.min = '1'; input.max = '999';
+    input.placeholder = '—';
+    input.value = saved.threshold || '';
+    input.dataset.name = list.name;
+    input.className = 'threshold-input';
+    input.addEventListener('input', function() { updatePill(this); });
 
-    var daysLabel = document.createElement('span');
-    daysLabel.className = 'control-label';
-    daysLabel.innerText = s.days;
+    var daysLbl = document.createElement('span');
+    daysLbl.className = 'control-label';
+    daysLbl.innerText = s.days;
 
-    flagWrap.appendChild(flagLabel);
-    flagWrap.appendChild(thresholdInput);
-    flagWrap.appendChild(daysLabel);
+    pill.appendChild(flagIcon);
+    pill.appendChild(input);
+    pill.appendChild(daysLbl);
 
-    // Done section
-    var doneWrap = document.createElement('div');
-    doneWrap.className = 'control-group';
+    // Separator
+    var sep = document.createElement('div');
+    sep.className = 'separator';
 
-    var doneLabel = document.createElement('span');
-    doneLabel.className = 'control-label';
-    doneLabel.innerText = s.doneLabel;
+    // Done label
+    var doneLbl = document.createElement('span');
+    doneLbl.className = 'control-label';
+    doneLbl.innerText = s.doneLabel;
 
+    // Toggle
     var toggleLabel = document.createElement('label');
     toggleLabel.className = 'toggle';
-
     var checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.checked = saved.done || false;
     checkbox.dataset.name = list.name;
     checkbox.className = 'done-checkbox';
-
     var slider = document.createElement('span');
     slider.className = 'slider';
-
     toggleLabel.appendChild(checkbox);
     toggleLabel.appendChild(slider);
-    doneWrap.appendChild(doneLabel);
-    doneWrap.appendChild(toggleLabel);
 
-    controls.appendChild(flagWrap);
-    controls.appendChild(doneWrap);
+    controls.appendChild(pill);
+    controls.appendChild(sep);
+    controls.appendChild(doneLbl);
+    controls.appendChild(toggleLabel);
 
     item.appendChild(nameSpan);
     item.appendChild(controls);
@@ -163,54 +131,43 @@ t.render(function() {
       t.get('board', 'shared', 'listSettings'),
       t.get('board', 'shared', 'language')
     ]).then(function(results) {
-      var boardId   = results[0].id;
-      listSettings  = results[1] || {};
+      var boardId = results[0].id;
+      listSettings = results[1] || {};
       var savedLang = results[2] || 'en';
-
       currentLang = savedLang;
       LANGS.forEach(function(l) {
         var btn = document.getElementById('lang-' + l.code);
         if (btn) btn.className = 'lang-btn' + (l.code === savedLang ? ' active' : '');
       });
       applyStrings();
-
-      return fetch(
-        'https://api.trello.com/1/boards/' + boardId +
-        '/lists?key=' + API_KEY + '&token=' + token
-      )
-      .then(function(r) { return r.json(); })
-      .then(function(lists) {
-        boardLists = lists;
-        renderLists();
-        document.getElementById('save').style.display = 'block';
-        applyStrings();
-      });
+      return fetch('https://api.trello.com/1/boards/' + boardId + '/lists?key=' + API_KEY + '&token=' + token)
+        .then(function(r) { return r.json(); })
+        .then(function(lists) {
+          boardLists = lists;
+          renderLists();
+          document.getElementById('save').style.display = 'block';
+          applyStrings();
+        });
     });
   }).catch(function() {
-    document.getElementById('lists').innerHTML =
-      '<div class="loading">' + STRINGS[currentLang].error + '</div>';
+    document.getElementById('lists').innerHTML = '<div class="loading">' + STRINGS[currentLang].error + '</div>';
   });
 });
 
 document.getElementById('save').addEventListener('click', function() {
   var settings = {};
-
   document.querySelectorAll('.threshold-input').forEach(function(input) {
     var name = input.dataset.name;
     if (!settings[name]) settings[name] = { done: false, threshold: '' };
     settings[name].threshold = input.value ? parseInt(input.value) : '';
   });
-
   document.querySelectorAll('.done-checkbox').forEach(function(cb) {
     var name = cb.dataset.name;
     if (!settings[name]) settings[name] = { done: false, threshold: '' };
     settings[name].done = cb.checked;
   });
-
   Promise.all([
     t.set('board', 'shared', 'listSettings', settings),
     t.set('board', 'shared', 'language', currentLang)
-  ]).then(function() {
-    t.closePopup();
-  });
+  ]).then(function() { t.closePopup(); });
 });
