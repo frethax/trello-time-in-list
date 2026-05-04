@@ -17,6 +17,15 @@ var LANGS = [
   { code: 'pt', label: 'Português' }
 ];
 
+document.addEventListener('DOMContentLoaded', function() {
+  LANGS.forEach(function(l) {
+    var btn = document.getElementById('lang-' + l.code);
+    if (btn) {
+      btn.addEventListener('click', function() { setLang(l.code); });
+    }
+  });
+});
+
 var currentLang = 'en', boardLists = [], listSettings = {};
 
 window.setLang = function(lang) {
