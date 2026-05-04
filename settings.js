@@ -174,8 +174,8 @@ document.getElementById('save').addEventListener('click', function() {
     var name = cb.dataset.name;
     if (!settings[name]) settings[name] = { done: false, threshold: '' };
     settings[name].done = cb.checked;
-  });
   Promise.all([
     t.set('board', 'shared', 'listSettings', settings),
     t.set('board', 'shared', 'language', currentLang)
-}).then(function() { t.closeModal(); });
+  ]).then(function() { t.closeModal(); });
+});
