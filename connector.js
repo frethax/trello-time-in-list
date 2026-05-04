@@ -34,6 +34,8 @@ TrelloPowerUp.initialize({
           var currentListName = currentListObj ? currentListObj.name : '';
           var setting = listSettings[currentListName] || {};
 
+          if (setting.ignore) return [];
+
           if (setting.done) {
             return [{ text: '✓ Done', color: 'green', refresh: 86400 }];
           }
@@ -69,10 +71,10 @@ TrelloPowerUp.initialize({
       icon: 'https://trello-time-in-list.vercel.app/icon.png',
       condition: 'admin',
       callback: function(t) {
-        return t.modal({
+        return t.popup({
           title: 'Time in List Settings',
           url:   t.signUrl('https://trello-time-in-list.vercel.app/settings.html'),
-          height: 600
+          height: 400
         });
       }
     }];
