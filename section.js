@@ -22,24 +22,19 @@
   function showAuth() {
     var root = document.getElementById('root');
     root.innerHTML = '';
-
     var wrap = document.createElement('div');
     wrap.style.cssText = 'padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;';
-
     var msg = document.createElement('div');
     msg.style.cssText = 'font-size:13px;color:#5e6c84;margin-bottom:12px;';
     msg.innerText = 'Connect your Trello account to see card timing data.';
-
     var btn = document.createElement('button');
     btn.innerText = 'Connect Trello Account';
     btn.style.cssText = 'background:#0052cc;color:white;border:none;padding:8px 16px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer';
-
     btn.addEventListener('click', function() {
       var restApi = t.getRestApi();
       restApi.authorize({ scope: 'read', expiration: 'never' })
         .then(function() { t.render(function() {}); });
     });
-
     wrap.appendChild(msg);
     wrap.appendChild(btn);
     root.appendChild(wrap);
@@ -58,6 +53,7 @@
       var currentListObj  = lists.find(function(l) { return l.id === card.idList; });
       var currentListName = currentListObj ? currentListObj.name : '';
       var isDone = doneLists.indexOf(currentListName) > -1;
+
       return fetch(
         'https://api.trello.com/1/cards/' + card.id +
         '/actions?filter=updateCard:idList,createCard,commentCard,addMemberToCard' +
@@ -75,35 +71,21 @@
       });
     });
   }
-      return fetch(
-        'https://api.trello.com/1/cards/' + card.id +
-        '/actions?filter=updateCard:idList,createCard,commentCard,addMemberToCard' +
-        '&key=' + API_KEY + '&token=' + token
-      )
-      .then(function(r) { return r.json(); })
-      .then(function(actions) {
-        if (!actions || !actions.length) {
-          document.getElementById('root').innerHTML =
-            '<div style="font-size:12px;color:#5e6c84;padding:16px">No action data found for this card.</div>';
-          t.sizeTo('#root');
-          return;
-        }
-        renderPanel(actions);
-      });
-    });
-  }
 
-  function renderPanel(actions) {
+  function renderPanel(actions, isDone) {
     var ordered = actions.slice().reverse();
     var moveActions  = ordered.filter(function(a){ return a.data && a.data.listAfter; });
     var createAction = ordered.find(function(a){ return a.type === 'createCard'; });
 
     var lastMove = moveActions.length ? moveActions[moveActions.length-1] : (createAction || ordered[ordered.length-1]);
-var currentList = (lastMove.data && lastMove.data.listAfter) 
-  ? lastMove.data.listAfter.name 
-  : (createAction && createAction.data && createAction.data.list 
-    ? createAction.data.list.name 
-    : 'Unknown');    var currentStageTime = Date.now() - new Date(lastMove.date);
+    var currentList = (lastMove.data && lastMove.data.listAfter)
+      ? lastMove.data.listAfter.name
+      : (createAction && createAction.data && createAction.data.list
+        ? createAction.data.list.name
+        : 'Unknown');
+
+    var frozenAt = isDone ? new Date(lastMove.date) : new Date();
+    var currentStageTime = frozenAt - new Date(lastMove.date);
     var totalTime = Date.now() - new Date(ordered[0].date);
 
     var createdBy = '';
@@ -123,7 +105,7 @@ var currentList = (lastMove.data && lastMove.data.listAfter)
       if (activityCount[name] > mostActiveCount) { mostActive = name; mostActiveCount = activityCount[name]; }
     });
 
-    var timeline = buildTimeline(ordered);
+    var timeline = buildTimeline(ordered, isDone);
     var totals   = buildTotals(timeline);
     var listKeys = Object.keys(totals);
     var grandTotal = listKeys.reduce(function(s,k){ return s + totals[k]; }, 0);
@@ -133,6 +115,14 @@ var currentList = (lastMove.data && lastMove.data.listAfter)
 
     var root = document.getElementById('root');
     root.innerHTML = '';
+
+    // Done banner
+    if (isDone) {
+      var banner = document.createElement('div');
+      banner.style.cssText = 'background:#e3fcef;border:1px solid #abf5d1;border-radius:6px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:#006644;font-weight:500;display:flex;align-items:center;gap:6px;';
+      banner.innerHTML = '✓ This card is in a Done list — timers are frozen.';
+      root.appendChild(banner);
+    }
 
     var wrapper = document.createElement('div');
     wrapper.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:2px';
@@ -149,10 +139,11 @@ var currentList = (lastMove.data && lastMove.data.listAfter)
       ].join('');
     }
 
+    var stageColor = isDone ? '#5e6c84' : '#2ea043';
     var leftHTML = '';
     leftHTML += leftRow('⏱', 'Current Stage',
       '<div style="font-size:13px;font-weight:600;color:#172b4d;margin-bottom:2px">' + escHtml(currentList) + '</div>' +
-      '<div style="font-size:20px;font-weight:700;color:#2ea043;line-height:1.2">' + formatTime(currentStageTime) + '</div>', false);
+      '<div style="font-size:20px;font-weight:700;color:' + stageColor + ';line-height:1.2">' + formatTime(currentStageTime) + '</div>', false);
     leftHTML += leftRow('📊', 'Card Age',
       '<div style="font-size:20px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>', false);
     if (mostActive) {
@@ -260,7 +251,7 @@ var currentList = (lastMove.data && lastMove.data.listAfter)
     return day + '.' + mon + ' ' + h + ':' + min;
   }
 
-  function buildTimeline(actions) {
+  function buildTimeline(actions, isDone) {
     var timeline = [], createAction = null, moveActions = [];
     actions.forEach(function(a) {
       if (a.type === 'createCard') createAction = a;
@@ -278,7 +269,11 @@ var currentList = (lastMove.data && lastMove.data.listAfter)
     }
     if (moveActions.length) {
       var last = moveActions[moveActions.length-1];
-      timeline.push({ list: last.data.listAfter.name, date: new Date(last.date), duration: Date.now() - new Date(last.date) });
+      var endTime = isDone ? new Date(last.date) : new Date();
+      var lastDuration = endTime - new Date(last.date);
+      if (lastDuration >= 0) {
+        timeline.push({ list: last.data.listAfter.name, date: new Date(last.date), duration: lastDuration });
+      }
     }
     return timeline;
   }
