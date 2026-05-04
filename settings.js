@@ -86,7 +86,7 @@ function renderLists() {
   header.innerHTML =
     '<span class="header-name"></span>' +
     '<span class="header-right">' +
-      '<span class="header-label">' + s.flagAfter + '</span>' +
+      
       '<span class="header-label header-days">' + s.days + '</span>' +
       '<span class="header-label">' + s.doneList + '</span>' +
     '</span>';
