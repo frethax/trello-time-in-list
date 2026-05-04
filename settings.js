@@ -178,4 +178,4 @@ document.getElementById('save').addEventListener('click', function() {
   Promise.all([
     t.set('board', 'shared', 'listSettings', settings),
     t.set('board', 'shared', 'language', currentLang)
-}).then(function() { t.closeModal(); });});
+}).then(function() { t.closeModal(); });
