@@ -6,71 +6,60 @@
 
   var STRINGS = {
     en: {
-      currentStage:  'Current Stage',
-      cardAge:       'Card Age',
-      mostActive:    'Most Active',
-      createdBy:     'Created By',
-      timePerList:   'Time Per List',
-      cardHistory:   'Card History',
-      noData:        'No action data found for this card.',
-      noChanges:     'No list changes yet.',
-      couldNotLoad:  'Could not load data. Please refresh.',
-      connectBtn:    'Connect Trello Account',
-      connectMsg:    'Connect your Trello account to see card timing data.',
-      doneBanner:    '✓ This card is in a Done list — timers are frozen.',
-      unknown:       'Unknown'
+      currentStage: 'Current Stage', cardAge: 'Card Age',
+      mostActive: 'Most Active', createdBy: 'Created By',
+      timePerList: 'Time Per List', cardHistory: 'Card History',
+      noData: 'No action data found for this card.',
+      noChanges: 'No list changes yet.',
+      couldNotLoad: 'Could not load data. Please refresh.',
+      connectBtn: 'Connect Trello Account',
+      connectMsg: 'Connect your Trello account to see card timing data.',
+      doneBanner: '✓ This card is in a Done list — timers are frozen.',
+      ignored: 'This list is set to ignore — no tracking here.',
+      unknown: 'Unknown'
     },
     tr: {
-      currentStage:  'Mevcut Aşama',
-      cardAge:       'Kart Yaşı',
-      mostActive:    'En Aktif',
-      createdBy:     'Kartı Açan',
-      timePerList:   'Liste Bazlı Süre',
-      cardHistory:   'Kart Geçmişi',
-      noData:        'Bu kart için veri bulunamadı.',
-      noChanges:     'Henüz liste değişimi yok.',
-      couldNotLoad:  'Veri yüklenemedi. Lütfen sayfayı yenileyin.',
-      connectBtn:    'Trello Hesabını Bağla',
-      connectMsg:    'Kart verilerini görmek için Trello hesabınızı bağlayın.',
-      doneBanner:    '✓ Bu kart Tamamlandı listesinde — süreler donduruldu.',
-      unknown:       'Bilinmiyor'
+      currentStage: 'Mevcut Aşama', cardAge: 'Kart Yaşı',
+      mostActive: 'En Aktif', createdBy: 'Kartı Açan',
+      timePerList: 'Liste Bazlı Süre', cardHistory: 'Kart Geçmişi',
+      noData: 'Bu kart için veri bulunamadı.',
+      noChanges: 'Henüz liste değişimi yok.',
+      couldNotLoad: 'Veri yüklenemedi. Lütfen sayfayı yenileyin.',
+      connectBtn: 'Trello Hesabını Bağla',
+      connectMsg: 'Kart verilerini görmek için Trello hesabınızı bağlayın.',
+      doneBanner: '✓ Bu kart Tamamlandı listesinde — süreler donduruldu.',
+      ignored: 'Bu liste yoksayılıyor — takip yapılmıyor.',
+      unknown: 'Bilinmiyor'
     },
     es: {
-      currentStage:  'Etapa Actual',
-      cardAge:       'Edad de la Tarjeta',
-      mostActive:    'Más Activo',
-      createdBy:     'Creado Por',
-      timePerList:   'Tiempo por Lista',
-      cardHistory:   'Historial',
-      noData:        'No se encontraron datos para esta tarjeta.',
-      noChanges:     'Sin cambios de lista aún.',
-      couldNotLoad:  'No se pudieron cargar los datos. Actualiza la página.',
-      connectBtn:    'Conectar Cuenta de Trello',
-      connectMsg:    'Conecta tu cuenta de Trello para ver los datos de tiempo.',
-      doneBanner:    '✓ Esta tarjeta está en una lista Done — los temporizadores están congelados.',
-      unknown:       'Desconocido'
+      currentStage: 'Etapa Actual', cardAge: 'Edad de la Tarjeta',
+      mostActive: 'Más Activo', createdBy: 'Creado Por',
+      timePerList: 'Tiempo por Lista', cardHistory: 'Historial',
+      noData: 'No se encontraron datos para esta tarjeta.',
+      noChanges: 'Sin cambios de lista aún.',
+      couldNotLoad: 'No se pudieron cargar los datos. Actualiza la página.',
+      connectBtn: 'Conectar Cuenta de Trello',
+      connectMsg: 'Conecta tu cuenta de Trello para ver los datos de tiempo.',
+      doneBanner: '✓ Esta tarjeta está en una lista Done — los temporizadores están congelados.',
+      ignored: 'Esta lista está configurada para ignorar — sin seguimiento.',
+      unknown: 'Desconocido'
     },
     pt: {
-      currentStage:  'Etapa Atual',
-      cardAge:       'Idade do Cartão',
-      mostActive:    'Mais Ativo',
-      createdBy:     'Criado Por',
-      timePerList:   'Tempo por Lista',
-      cardHistory:   'Histórico',
-      noData:        'Nenhum dado encontrado para este cartão.',
-      noChanges:     'Sem alterações de lista ainda.',
-      couldNotLoad:  'Não foi possível carregar os dados. Atualize a página.',
-      connectBtn:    'Conectar Conta Trello',
-      connectMsg:    'Conecte sua conta Trello para ver os dados de tempo.',
-      doneBanner:    '✓ Este cartão está em uma lista Done — os temporizadores estão congelados.',
-      unknown:       'Desconhecido'
+      currentStage: 'Etapa Atual', cardAge: 'Idade do Cartão',
+      mostActive: 'Mais Ativo', createdBy: 'Criado Por',
+      timePerList: 'Tempo por Lista', cardHistory: 'Histórico',
+      noData: 'Nenhum dado encontrado para este cartão.',
+      noChanges: 'Sem alterações de lista ainda.',
+      couldNotLoad: 'Não foi possível carregar os dados. Atualize a página.',
+      connectBtn: 'Conectar Conta Trello',
+      connectMsg: 'Conecte sua conta Trello para ver os dados de tempo.',
+      doneBanner: '✓ Este cartão está em uma lista Done — os temporizadores estão congelados.',
+      ignored: 'Esta lista está configurada para ignorar — sem rastreamento.',
+      unknown: 'Desconhecido'
     }
   };
 
-  var t = TrelloPowerUp.iframe({
-    appKey:  API_KEY,
-    appName: 'Time in List'
-  });
+  var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'Time in List' });
 
   t.render(function() {
     return t.get('board', 'shared', 'language')
@@ -79,7 +68,7 @@
         var restApi = t.getRestApi();
         return restApi.getToken()
           .then(function(token) {
-            if (!token) { return showAuth(L); }
+            if (!token) return showAuth(L);
             return loadCard(token, L);
           })
           .catch(function() { return showAuth(L); });
@@ -89,28 +78,23 @@
         var restApi = t.getRestApi();
         return restApi.getToken()
           .then(function(token) {
-            if (!token) { return showAuth(L); }
+            if (!token) return showAuth(L);
             return loadCard(token, L);
           })
           .catch(function() { return showAuth(L); });
       });
   });
 
-  function showAuth(lang) {
-    var L = STRINGS[lang] || STRINGS['en'];
+  function showAuth(L) {
     var root = document.getElementById('root');
     root.innerHTML = '';
-    var wrap = document.createElement('div');
-    wrap.style.cssText = 'padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;';
-    var msg = document.createElement('div');
-    msg.style.cssText = 'font-size:13px;color:#5e6c84;margin-bottom:12px;';
+    var wrap = el('div', 'padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;');
+    var msg = el('div', 'font-size:13px;color:#5e6c84;margin-bottom:12px;');
     msg.innerText = L.connectMsg;
-    var btn = document.createElement('button');
+    var btn = el('button', 'background:#0052cc;color:white;border:none;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer');
     btn.innerText = L.connectBtn;
-    btn.style.cssText = 'background:#0052cc;color:white;border:none;padding:8px 16px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer';
     btn.addEventListener('click', function() {
-      var restApi = t.getRestApi();
-      restApi.authorize({ scope: 'read', expiration: 'never' })
+      t.getRestApi().authorize({ scope: 'read', expiration: 'never' })
         .then(function() { t.render(function() {}); });
     });
     wrap.appendChild(msg);
@@ -130,8 +114,16 @@
       var lists        = results[2] || [];
       var currentListObj  = lists.find(function(l) { return l.id === card.idList; });
       var currentListName = currentListObj ? currentListObj.name : '';
-      var setting = listSettings[currentListName] || {};
-      var isDone  = setting.done || false;
+      var setting  = listSettings[currentListName] || {};
+      var isDone   = setting.done   || false;
+      var isIgnore = setting.ignore || false;
+
+      if (isIgnore) {
+        document.getElementById('root').innerHTML =
+          '<div style="font-size:12px;color:#5e6c84;padding:16px">⊘ ' + L.ignored + '</div>';
+        t.sizeTo('#root');
+        return;
+      }
 
       return fetch(
         'https://api.trello.com/1/cards/' + card.id +
@@ -152,19 +144,22 @@
   }
 
   function renderPanel(actions, isDone, L) {
-    var ordered = actions.slice().reverse();
+    var ordered      = actions.slice().reverse();
     var moveActions  = ordered.filter(function(a){ return a.data && a.data.listAfter; });
     var createAction = ordered.find(function(a){ return a.type === 'createCard'; });
 
-    var lastMove = moveActions.length ? moveActions[moveActions.length-1] : (createAction || ordered[ordered.length-1]);
+    var lastMove = moveActions.length
+      ? moveActions[moveActions.length - 1]
+      : (createAction || ordered[ordered.length - 1]);
+
     var currentList = (lastMove.data && lastMove.data.listAfter)
       ? lastMove.data.listAfter.name
       : (createAction && createAction.data && createAction.data.list
         ? createAction.data.list.name : L.unknown);
 
-    var frozenAt = isDone ? new Date(lastMove.date) : new Date();
+    var frozenAt         = isDone ? new Date(lastMove.date) : new Date();
     var currentStageTime = frozenAt - new Date(lastMove.date);
-    var totalTime = Date.now() - new Date(ordered[0].date);
+    var totalTime        = Date.now() - new Date(ordered[0].date);
 
     var createdBy = '';
     if (createAction && createAction.memberCreator) {
@@ -183,129 +178,169 @@
       if (activityCount[name] > mostActiveCount) { mostActive = name; mostActiveCount = activityCount[name]; }
     });
 
-    var timeline = buildTimeline(ordered, isDone);
-    var totals   = buildTotals(timeline);
-    var listKeys = Object.keys(totals);
-    var grandTotal = listKeys.reduce(function(s,k){ return s + totals[k]; }, 0);
-    var COLORS = ['#0052cc','#2ea043','#f2cc60','#db61a2','#ff7b72'];
-    var colorMap = {};
+    var timeline   = buildTimeline(ordered, isDone);
+    var totals     = buildTotals(timeline);
+    var listKeys   = Object.keys(totals);
+    var grandTotal = listKeys.reduce(function(s, k){ return s + totals[k]; }, 0);
+    var COLORS     = ['#0052cc','#2ea043','#f2cc60','#db61a2','#ff7b72'];
+    var colorMap   = {};
     listKeys.forEach(function(list, i){ colorMap[list] = COLORS[i % COLORS.length]; });
 
     var root = document.getElementById('root');
     root.innerHTML = '';
+    var wrap = el('div', 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;flex-direction:column;gap:8px;padding:2px');
 
+    /* ---- Done banner ---- */
     if (isDone) {
-      var banner = document.createElement('div');
-      banner.style.cssText = 'background:#e3fcef;border:1px solid #abf5d1;border-radius:6px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:#006644;font-weight:500;';
+      var banner = el('div', 'background:#e3fcef;border:1px solid #abf5d1;border-radius:8px;padding:10px 14px;font-size:12px;color:#006644;font-weight:500;');
       banner.innerText = L.doneBanner;
-      root.appendChild(banner);
+      wrap.appendChild(banner);
     }
 
-    var wrapper = document.createElement('div');
-    wrapper.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:2px';
-
-    var left = document.createElement('div');
-    left.style.cssText = 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;';
-
-    function leftRow(icon, label, value, isLast) {
-      return [
-        '<div style="' + (isLast ? '' : 'margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #dfe1e6;') + '">',
-          '<div style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">' + icon + ' ' + label + '</div>',
-          value,
-        '</div>'
-      ].join('');
-    }
+    /* ---- Row 1: Current Stage + Card Age ---- */
+    var row1 = el('div', 'display:grid;grid-template-columns:1fr 1fr;gap:8px;');
 
     var stageColor = isDone ? '#5e6c84' : '#2ea043';
-    var leftHTML = '';
-    leftHTML += leftRow('⏱', L.currentStage,
-      '<div style="font-size:13px;font-weight:600;color:#172b4d;margin-bottom:2px">' + escHtml(currentList) + '</div>' +
-      '<div style="font-size:20px;font-weight:700;color:' + stageColor + ';line-height:1.2">' + formatTime(currentStageTime) + '</div>', false);
-    leftHTML += leftRow('📊', L.cardAge,
-      '<div style="font-size:20px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>', false);
-    if (mostActive) {
-      leftHTML += leftRow('👤', L.mostActive,
-        '<div style="font-size:14px;font-weight:600;color:#172b4d">' + escHtml(mostActive) +
-        ' <span style="color:#5e6c84;font-weight:400">(' + mostActiveCount + ')</span></div>', !createdBy);
-    }
-    if (createdBy) {
-      leftHTML += leftRow('⭐', L.createdBy,
-        '<div style="font-size:14px;font-weight:600;color:#172b4d">' + escHtml(createdBy) + '</div>', true);
-    }
-    left.innerHTML = leftHTML;
+    row1.appendChild(infoCard(
+      '⏱', L.currentStage,
+      '<div style="font-size:13px;font-weight:600;color:#172b4d;margin-bottom:3px">' + escHtml(currentList) + '</div>' +
+      '<div style="font-size:22px;font-weight:700;color:' + stageColor + ';line-height:1.2">' + formatTime(currentStageTime) + '</div>'
+    ));
+    row1.appendChild(infoCard(
+      '📊', L.cardAge,
+      '<div style="font-size:22px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>'
+    ));
+    wrap.appendChild(row1);
 
-    var right = document.createElement('div');
-    right.style.cssText = 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;';
+    /* ---- Row 2: Most Active + Created By ---- */
+    if (mostActive || createdBy) {
+      var row2 = el('div', 'display:grid;grid-template-columns:1fr 1fr;gap:8px;');
+      if (mostActive) {
+        row2.appendChild(infoCard(
+          '👤', L.mostActive,
+          '<div style="font-size:14px;font-weight:600;color:#172b4d">' + escHtml(mostActive) +
+          ' <span style="color:#5e6c84;font-weight:400;font-size:12px">(' + mostActiveCount + ')</span></div>'
+        ));
+      }
+      if (createdBy) {
+        row2.appendChild(infoCard(
+          '⭐', L.createdBy,
+          '<div style="font-size:14px;font-weight:600;color:#172b4d">' + escHtml(createdBy) + '</div>'
+        ));
+      }
+      wrap.appendChild(row2);
+    }
 
-    if (!timeline.length) {
-      right.innerHTML = '<div style="font-size:12px;color:#5e6c84">' + L.noChanges + '</div>';
-    } else {
-      var rightHTML = '<div style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">📋 ' + L.timePerList + '</div>';
+    /* ---- Row 3: Time Per List ---- */
+    if (timeline.length && listKeys.length) {
+      var timeCard = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;');
+      var tTitle = el('div', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px;');
+      tTitle.innerText = '📋 ' + L.timePerList;
+      timeCard.appendChild(tTitle);
+
       listKeys.forEach(function(list) {
         var color = colorMap[list];
         var pct   = grandTotal > 0 ? (totals[list] / grandTotal * 100) : 0;
-        rightHTML += '<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">';
-        rightHTML += '<span style="font-size:12px;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52%;font-weight:500">' + escHtml(list) + '</span>';
-        rightHTML += '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0"><span style="font-size:11px;font-weight:700;color:' + color + '">' + Math.round(pct) + '%</span>';
-        rightHTML += '<span style="font-size:11px;color:#5e6c84;white-space:nowrap">' + formatTime(totals[list]) + '</span></div></div>';
-        rightHTML += '<div style="height:6px;background:#dfe1e6;border-radius:6px;overflow:hidden"><div style="height:100%;background:' + color + ';width:' + pct + '%;border-radius:6px"></div></div></div>';
+
+        var row = el('div', 'margin-bottom:10px;');
+        var meta = el('div', 'display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;');
+        var nameEl = el('span', 'font-size:12px;font-weight:500;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%;');
+        nameEl.innerText = list;
+        var right = el('div', 'display:flex;gap:8px;align-items:center;flex-shrink:0;');
+        var pctEl = el('span', 'font-size:11px;font-weight:700;color:' + color + ';min-width:32px;text-align:right;');
+        pctEl.innerText = Math.round(pct) + '%';
+        var timeEl = el('span', 'font-size:11px;color:#5e6c84;white-space:nowrap;');
+        timeEl.innerText = formatTime(totals[list]);
+        right.appendChild(pctEl);
+        right.appendChild(timeEl);
+        meta.appendChild(nameEl);
+        meta.appendChild(right);
+
+        var track = el('div', 'height:6px;background:#dfe1e6;border-radius:6px;overflow:hidden;');
+        var fill  = el('div', 'height:100%;background:' + color + ';width:' + pct + '%;border-radius:6px;');
+        track.appendChild(fill);
+        row.appendChild(meta);
+        row.appendChild(track);
+        timeCard.appendChild(row);
       });
-      right.innerHTML = rightHTML;
+      wrap.appendChild(timeCard);
+    }
 
-      var divider = document.createElement('div');
-      divider.style.cssText = 'border-top:1px solid #dfe1e6;margin:10px 0 8px;';
-      right.appendChild(divider);
+    /* ---- Row 4: Card History (collapsed) ---- */
+    if (timeline.length) {
+      var histCard = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;overflow:hidden;');
+      var histHead = el('div', 'display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;user-select:none;');
+      var histLbl  = el('span', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;');
+      histLbl.innerText = '≡ ' + L.cardHistory;
+      var arrow = el('span', 'font-size:9px;color:#5e6c84;transition:transform 0.2s;');
+      arrow.innerText = '▶';
+      histHead.appendChild(histLbl);
+      histHead.appendChild(arrow);
 
-      var histTitle = document.createElement('div');
-      histTitle.style.cssText = 'display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;';
-      histTitle.innerHTML = '<span style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px">≡ ' + L.cardHistory + '</span><span id="tl-arrow" style="font-size:9px;color:#5e6c84;transition:transform 0.2s">▶</span>';
-      right.appendChild(histTitle);
-
-      var tlList = document.createElement('div');
-      tlList.id = 'tl-list';
-      tlList.style.cssText = 'overflow:hidden;max-height:0;transition:max-height 0.25s ease,margin-top 0.25s ease;margin-top:0;';
+      var histBody = el('div', 'overflow:hidden;max-height:0;transition:max-height 0.25s ease;padding:0 14px;');
 
       timeline.forEach(function(item, idx) {
         var color  = colorMap[item.list] || COLORS[0];
         var isLast = idx === timeline.length - 1;
-        var el = document.createElement('div');
-        el.style.cssText = 'display:flex;gap:7px;padding-bottom:8px;';
-        el.innerHTML = [
-          '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:10px">',
-            '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0;margin-top:2px"></div>',
-            '<div style="width:2px;flex:1;background:' + (isLast?'transparent':'#dfe1e6') + ';margin-top:3px"></div>',
-          '</div>',
-          '<div style="flex:1;min-width:0">',
-            '<div style="font-size:12px;font-weight:600;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(item.list) + '</div>',
-            '<div style="font-size:10px;color:#5e6c84;margin-top:1px">' + (item.date ? formatDate(item.date) + ' · ' : '') + formatTime(item.duration) + '</div>',
-          '</div>'
-        ].join('');
-        tlList.appendChild(el);
+        var row    = el('div', 'display:flex;gap:8px;padding-bottom:10px;');
+        var lineCol = el('div', 'display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:10px;');
+        var dot  = el('div', 'width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0;margin-top:2px;');
+        var line = el('div', 'width:2px;flex:1;background:' + (isLast ? 'transparent' : '#dfe1e6') + ';margin-top:3px;');
+        lineCol.appendChild(dot);
+        lineCol.appendChild(line);
+        var content = el('div', 'flex:1;min-width:0;');
+        var listName = el('div', 'font-size:12px;font-weight:600;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;');
+        listName.innerText = item.list;
+        var meta = el('div', 'font-size:10px;color:#5e6c84;margin-top:2px;');
+        meta.innerText = (item.date ? formatDate(item.date) + ' · ' : '') + formatTime(item.duration);
+        content.appendChild(listName);
+        content.appendChild(meta);
+        row.appendChild(lineCol);
+        row.appendChild(content);
+        histBody.appendChild(row);
       });
-      right.appendChild(tlList);
 
       var open = false;
-      histTitle.addEventListener('click', function() {
+      histHead.addEventListener('click', function() {
         open = !open;
-        var arrow = document.getElementById('tl-arrow');
-        var list  = document.getElementById('tl-list');
         if (open) {
-          list.style.maxHeight = list.scrollHeight + 'px';
-          list.style.marginTop = '8px';
-          if (arrow) arrow.style.transform = 'rotate(90deg)';
+          histBody.style.maxHeight = histBody.scrollHeight + 'px';
+          histBody.style.paddingBottom = '12px';
+          arrow.style.transform = 'rotate(90deg)';
         } else {
-          list.style.maxHeight = '0';
-          list.style.marginTop = '0';
-          if (arrow) arrow.style.transform = 'rotate(0deg)';
+          histBody.style.maxHeight = '0';
+          histBody.style.paddingBottom = '0';
+          arrow.style.transform = 'rotate(0deg)';
         }
         setTimeout(function(){ t.sizeTo('#root'); }, 300);
       });
+
+      histCard.appendChild(histHead);
+      histCard.appendChild(histBody);
+      wrap.appendChild(histCard);
     }
 
-    wrapper.appendChild(left);
-    wrapper.appendChild(right);
-    root.appendChild(wrapper);
+    root.appendChild(wrap);
     t.sizeTo('#root');
+  }
+
+  /* ---- Helpers ---- */
+
+  function infoCard(icon, label, valueHTML) {
+    var card = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;');
+    var lbl  = el('div', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;display:flex;align-items:center;gap:4px;');
+    lbl.innerHTML = icon + ' ' + label;
+    card.appendChild(lbl);
+    var val = el('div', '');
+    val.innerHTML = valueHTML;
+    card.appendChild(val);
+    return card;
+  }
+
+  function el(tag, css) {
+    var e = document.createElement(tag);
+    if (css) e.style.cssText = css;
+    return e;
   }
 
   function formatTime(ms) {
@@ -345,10 +380,10 @@
       if (diff > 0) timeline.push({ list: moveActions[i].data.listAfter.name, date: new Date(moveActions[i].date), duration: diff });
     }
     if (moveActions.length) {
-      var last = moveActions[moveActions.length-1];
+      var last    = moveActions[moveActions.length - 1];
       var endTime = isDone ? new Date(last.date) : new Date();
-      var lastDuration = endTime - new Date(last.date);
-      if (lastDuration >= 0) timeline.push({ list: last.data.listAfter.name, date: new Date(last.date), duration: lastDuration });
+      var dur     = endTime - new Date(last.date);
+      if (dur >= 0) timeline.push({ list: last.data.listAfter.name, date: new Date(last.date), duration: dur });
     }
     return timeline;
   }
