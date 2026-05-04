@@ -15,14 +15,57 @@
     h2 { font-size: 14px; font-weight: 700; color: #172b4d; margin-bottom: 4px; }
     .subtitle { font-size: 12px; color: #5e6c84; margin-bottom: 16px; line-height: 1.5; }
     .list-item {
-      display: flex; align-items: center; justify-content: space-between;
-      background: white; border: 1px solid #dfe1e6; border-radius: 6px;
-      padding: 10px 14px; margin-bottom: 8px;
+      background: white;
+      border: 1px solid #dfe1e6;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+    }
+    .name-row {
+      margin-bottom: 8px;
     }
     .list-name {
-      font-size: 13px; font-weight: 500; color: #172b4d;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      max-width: 140px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #172b4d;
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .threshold-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .done-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .control-label {
+      font-size: 11px;
+      color: #5e6c84;
+      white-space: nowrap;
+    }
+    .threshold-input {
+      width: 52px;
+      padding: 4px 6px;
+      border: 1px solid #dfe1e6;
+      border-radius: 4px;
+      font-size: 12px;
+      text-align: center;
+      color: #172b4d;
+    }
+    .threshold-input:focus {
+      outline: none;
+      border-color: #0052cc;
     }
     .toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
     .toggle input { opacity: 0; width: 0; height: 0; }
@@ -45,24 +88,12 @@
     }
     .save-btn:hover { background: #0065ff; }
     .loading { text-align: center; color: #5e6c84; padding: 20px; }
-    .col-header {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 0 14px; margin-bottom: 6px;
-    }
-    .col-label { font-size: 10px; font-weight: 600; color: #5e6c84; text-transform: uppercase; letter-spacing: 0.5px; }
   </style>
 </head>
 <body>
   <div id="root">
     <h2>List Settings</h2>
     <p class="subtitle">Set a threshold to flag slow cards in red. Mark lists as Done to freeze timers.</p>
-    <div class="col-header">
-      <span class="col-label">List</span>
-      <div style="display:flex;gap:24px">
-        <span class="col-label">Threshold</span>
-        <span class="col-label">Done</span>
-      </div>
-    </div>
     <div id="lists"><div class="loading">Loading lists...</div></div>
     <button class="save-btn" id="save" style="display:none">Save Settings</button>
   </div>

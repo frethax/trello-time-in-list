@@ -28,18 +28,28 @@ t.render(function() {
           var item = document.createElement('div');
           item.className = 'list-item';
 
-          // List name
+          // Row 1: list name
+          var nameRow = document.createElement('div');
+          nameRow.className = 'name-row';
+
           var nameSpan = document.createElement('span');
           nameSpan.className = 'list-name';
           nameSpan.innerText = list.name;
+          nameSpan.title = list.name;
 
-          // Controls
-          var controls = document.createElement('div');
-          controls.style.cssText = 'display:flex;align-items:center;gap:10px;flex-shrink:0';
+          nameRow.appendChild(nameSpan);
 
-          // Threshold input
+          // Row 2: controls
+          var controlRow = document.createElement('div');
+          controlRow.className = 'control-row';
+
+          // Threshold
           var thresholdWrap = document.createElement('div');
-          thresholdWrap.style.cssText = 'display:flex;align-items:center;gap:4px';
+          thresholdWrap.className = 'threshold-wrap';
+
+          var thresholdLabel = document.createElement('span');
+          thresholdLabel.className = 'control-label';
+          thresholdLabel.innerText = 'Flag after';
 
           var thresholdInput = document.createElement('input');
           thresholdInput.type = 'number';
@@ -49,22 +59,22 @@ t.render(function() {
           thresholdInput.value = saved.threshold || '';
           thresholdInput.dataset.name = list.name;
           thresholdInput.className = 'threshold-input';
-          thresholdInput.style.cssText = 'width:48px;padding:4px 6px;border:1px solid #dfe1e6;border-radius:4px;font-size:12px;text-align:center;color:#172b4d';
 
-          var thresholdLabel = document.createElement('span');
-          thresholdLabel.style.cssText = 'font-size:11px;color:#5e6c84;white-space:nowrap';
-          thresholdLabel.innerText = 'days';
+          var thresholdUnit = document.createElement('span');
+          thresholdUnit.className = 'control-label';
+          thresholdUnit.innerText = 'days';
 
-          thresholdWrap.appendChild(thresholdInput);
           thresholdWrap.appendChild(thresholdLabel);
+          thresholdWrap.appendChild(thresholdInput);
+          thresholdWrap.appendChild(thresholdUnit);
 
           // Done toggle
           var doneWrap = document.createElement('div');
-          doneWrap.style.cssText = 'display:flex;align-items:center;gap:4px';
+          doneWrap.className = 'done-wrap';
 
           var doneLabel = document.createElement('span');
-          doneLabel.style.cssText = 'font-size:11px;color:#5e6c84;white-space:nowrap';
-          doneLabel.innerText = 'Done';
+          doneLabel.className = 'control-label';
+          doneLabel.innerText = 'Done list';
 
           var toggleLabel = document.createElement('label');
           toggleLabel.className = 'toggle';
@@ -84,11 +94,11 @@ t.render(function() {
           doneWrap.appendChild(doneLabel);
           doneWrap.appendChild(toggleLabel);
 
-          controls.appendChild(thresholdWrap);
-          controls.appendChild(doneWrap);
+          controlRow.appendChild(thresholdWrap);
+          controlRow.appendChild(doneWrap);
 
-          item.appendChild(nameSpan);
-          item.appendChild(controls);
+          item.appendChild(nameRow);
+          item.appendChild(controlRow);
           container.appendChild(item);
         });
 
@@ -104,16 +114,13 @@ t.render(function() {
 document.getElementById('save').addEventListener('click', function() {
   var settings = {};
 
-  var thresholdInputs = document.querySelectorAll('.threshold-input');
-  var doneCheckboxes  = document.querySelectorAll('.done-checkbox');
-
-  thresholdInputs.forEach(function(input) {
+  document.querySelectorAll('.threshold-input').forEach(function(input) {
     var name = input.dataset.name;
     if (!settings[name]) settings[name] = { done: false, threshold: '' };
     settings[name].threshold = input.value ? parseInt(input.value) : '';
   });
 
-  doneCheckboxes.forEach(function(cb) {
+  document.querySelectorAll('.done-checkbox').forEach(function(cb) {
     var name = cb.dataset.name;
     if (!settings[name]) settings[name] = { done: false, threshold: '' };
     settings[name].done = cb.checked;
