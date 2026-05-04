@@ -47,7 +47,34 @@
   }
 
   function loadCard(token) {
-    return t.card('id').then(function(card) {
+    return Promise.all([
+      t.card('id', 'idList'),
+      t.get('board', 'shared', 'doneLists'),
+      t.lists('id', 'name')
+    ]).then(function(results) {
+      var card      = results[0];
+      var doneLists = results[1] || [];
+      var lists     = results[2] || [];
+      var currentListObj  = lists.find(function(l) { return l.id === card.idList; });
+      var currentListName = currentListObj ? currentListObj.name : '';
+      var isDone = doneLists.indexOf(currentListName) > -1;
+      return fetch(
+        'https://api.trello.com/1/cards/' + card.id +
+        '/actions?filter=updateCard:idList,createCard,commentCard,addMemberToCard' +
+        '&key=' + API_KEY + '&token=' + token
+      )
+      .then(function(r) { return r.json(); })
+      .then(function(actions) {
+        if (!actions || !actions.length) {
+          document.getElementById('root').innerHTML =
+            '<div style="font-size:12px;color:#5e6c84;padding:16px">No action data found for this card.</div>';
+          t.sizeTo('#root');
+          return;
+        }
+        renderPanel(actions, isDone);
+      });
+    });
+  }
       return fetch(
         'https://api.trello.com/1/cards/' + card.id +
         '/actions?filter=updateCard:idList,createCard,commentCard,addMemberToCard' +
