@@ -20,9 +20,7 @@ var LANGS = [
 document.addEventListener('DOMContentLoaded', function() {
   LANGS.forEach(function(l) {
     var btn = document.getElementById('lang-' + l.code);
-    if (btn) {
-      btn.addEventListener('click', function() { setLang(l.code); });
-    }
+    if (btn) btn.addEventListener('click', function() { setLang(l.code); });
   });
 });
 
@@ -74,7 +72,6 @@ function renderLists() {
     var controls = document.createElement('div');
     controls.className = 'item-controls';
 
-    // Flag pill
     var pill = document.createElement('div');
     pill.className = 'flag-pill' + (saved.threshold ? ' active' : '');
 
@@ -99,16 +96,13 @@ function renderLists() {
     pill.appendChild(input);
     pill.appendChild(daysLbl);
 
-    // Separator
     var sep = document.createElement('div');
     sep.className = 'separator';
 
-    // Done label
     var doneLbl = document.createElement('span');
     doneLbl.className = 'control-label';
     doneLbl.innerText = s.doneLabel;
 
-    // Toggle
     var toggleLabel = document.createElement('label');
     toggleLabel.className = 'toggle';
     var checkbox = document.createElement('input');
@@ -125,7 +119,6 @@ function renderLists() {
     controls.appendChild(sep);
     controls.appendChild(doneLbl);
     controls.appendChild(toggleLabel);
-
     item.appendChild(nameSpan);
     item.appendChild(controls);
     container.appendChild(item);
@@ -140,26 +133,30 @@ t.render(function() {
       t.get('board', 'shared', 'listSettings'),
       t.get('board', 'shared', 'language')
     ]).then(function(results) {
-      var boardId = results[0].id;
-      listSettings = results[1] || {};
+      var boardId   = results[0].id;
+      listSettings  = results[1] || {};
       var savedLang = results[2] || 'en';
-      currentLang = savedLang;
+      currentLang   = savedLang;
       LANGS.forEach(function(l) {
         var btn = document.getElementById('lang-' + l.code);
         if (btn) btn.className = 'lang-btn' + (l.code === savedLang ? ' active' : '');
       });
       applyStrings();
-      return fetch('https://api.trello.com/1/boards/' + boardId + '/lists?key=' + API_KEY + '&token=' + token)
-        .then(function(r) { return r.json(); })
-        .then(function(lists) {
-          boardLists = lists;
-          renderLists();
-          document.getElementById('save').style.display = 'block';
-          applyStrings();
-        });
+      return fetch(
+        'https://api.trello.com/1/boards/' + boardId +
+        '/lists?key=' + API_KEY + '&token=' + token
+      )
+      .then(function(r) { return r.json(); })
+      .then(function(lists) {
+        boardLists = lists;
+        renderLists();
+        document.getElementById('save').style.display = 'block';
+        applyStrings();
+      });
     });
   }).catch(function() {
-    document.getElementById('lists').innerHTML = '<div class="loading">' + STRINGS[currentLang].error + '</div>';
+    document.getElementById('lists').innerHTML =
+      '<div class="loading">' + STRINGS[currentLang].error + '</div>';
   });
 });
 
@@ -174,6 +171,7 @@ document.getElementById('save').addEventListener('click', function() {
     var name = cb.dataset.name;
     if (!settings[name]) settings[name] = { done: false, threshold: '' };
     settings[name].done = cb.checked;
+  });
   Promise.all([
     t.set('board', 'shared', 'listSettings', settings),
     t.set('board', 'shared', 'language', currentLang)
