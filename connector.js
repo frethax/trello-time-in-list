@@ -71,10 +71,12 @@ TrelloPowerUp.initialize({
       icon: 'https://trello-time-in-list.vercel.app/icon.png',
       condition: 'admin',
       callback: function(t) {
-        return t.popup({
-          title: 'Time in List Settings',
-          url:   t.signUrl('https://trello-time-in-list.vercel.app/settings.html'),
-          height: 400
+        return t.modal({
+          url:    t.signUrl('https://trello-time-in-list.vercel.app/settings.html'),
+          accentColor: '#0052cc',
+          height: 600,
+          fullscreen: false,
+          title: 'Time in List Settings'
         });
       }
     }];
