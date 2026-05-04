@@ -21,41 +21,69 @@ TrelloPowerUp.initialize({
     return restApi.getToken()
       .then(function(token) {
         if (!token) return [];
-        return t.card('id').then(function(card) {
+        return Promise.all([
+          t.card('id', 'idList'),
+          t.get('board', 'shared', 'doneLists'),
+          t.lists('id', 'name')
+        ]).then(function(results) {
+          var card      = results[0];
+          var doneLists = results[1] || [];
+          var lists     = results[2] || [];
+
+          var currentListObj = lists.find(function(l) { return l.id === card.idList; });
+          var currentListName = currentListObj ? currentListObj.name : '';
+
+          if (doneLists.indexOf(currentListName) > -1) {
+            return [{ text: '✓ Done', color: 'green', refresh: 86400 }];
+          }
+
           return fetch(
             'https://api.trello.com/1/cards/' + card.id +
             '/actions?filter=updateCard:idList&limit=1&key=' + API_KEY + '&token=' + token
           )
           .then(function(r) { return r.json(); })
           .then(function(data) {
-            if (data && data.length) {
-              return makeBadge(data[0].date, t, token, card.id);
-            }
+            if (data && data.length) return makeBadge(data[0].date, t);
             return fetch(
               'https://api.trello.com/1/cards/' + card.id +
               '/actions?filter=createCard&limit=1&key=' + API_KEY + '&token=' + token
             )
             .then(function(r) { return r.json(); })
             .then(function(cdata) {
-              if (cdata && cdata.length) return makeBadge(cdata[0].date, t, token, card.id);
+              if (cdata && cdata.length) return makeBadge(cdata[0].date, t);
               return [];
             });
           });
         });
       })
       .catch(function() { return []; });
+  },
+
+  'board-buttons': function(t, options) {
+    return [{
+      text: 'Time in List Settings',
+      icon: 'https://trello-time-in-list.vercel.app/icon.png',
+      condition: 'admin',
+      callback: function(t) {
+        return t.popup({
+          title: 'Time in List Settings',
+          url:   t.signUrl('https://trello-time-in-list.vercel.app/settings.html'),
+          height: 400
+        });
+      }
+    }];
   }
 
 }, {
-  appKey:   API_KEY,
-  appName:  'Time in List',
-  apiOrigin: 'https://api.trello.com',
+  appKey:        API_KEY,
+  appName:       'Time in List',
+  apiOrigin:     'https://api.trello.com',
   authorizeName: 'Time in List',
   authorizeButton: true,
   scope: { read: true }
 });
 
-function makeBadge(dateStr, t, token, cardId) {
+function makeBadge(dateStr, t) {
   return t.get('board', 'shared', 'thresholdDays').then(function(val) {
     var thresholdDays = (val && !isNaN(val)) ? parseInt(val) : 3;
     var diff  = Date.now() - new Date(dateStr);
