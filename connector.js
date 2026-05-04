@@ -73,8 +73,8 @@ function formatTime(ms) {
   var hours   = Math.floor(ms / (1000 * 60 * 60));
   var days    = Math.floor(hours / 24);
   var rest    = hours % 24;
-  if (minutes < 60) return minutes + 'm';
-  if (days > 0 && rest > 0) return days + 'd ' + rest + 'h';
-  if (days > 0) return days + 'd';
-  return hours + 'h';
+  if (minutes < 60) return minutes + ' min';
+  if (days > 0 && rest > 0) return days + ' days ' + rest + ' hours';
+  if (days > 0) return days + ' days';
+  return hours + ' hours';
 }
