@@ -44,15 +44,15 @@
   function loadCard(token) {
     return Promise.all([
       t.card('id', 'idList'),
-      t.get('board', 'shared', 'doneLists'),
+      t.get('board', 'shared', 'listSettings'),
       t.lists('id', 'name')
     ]).then(function(results) {
       var card      = results[0];
-      var doneLists = results[1] || [];
+      var listSettings = results[1] || {};
       var lists     = results[2] || [];
       var currentListObj  = lists.find(function(l) { return l.id === card.idList; });
       var currentListName = currentListObj ? currentListObj.name : '';
-      var isDone = doneLists.indexOf(currentListName) > -1;
+      var setting = listSettings[currentListName] || {}; var isDone = setting.done || false;
 
       return fetch(
         'https://api.trello.com/1/cards/' + card.id +

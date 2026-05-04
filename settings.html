@@ -13,13 +13,17 @@
       padding: 16px;
     }
     h2 { font-size: 14px; font-weight: 700; color: #172b4d; margin-bottom: 4px; }
-    .subtitle { font-size: 12px; color: #5e6c84; margin-bottom: 16px; }
+    .subtitle { font-size: 12px; color: #5e6c84; margin-bottom: 16px; line-height: 1.5; }
     .list-item {
       display: flex; align-items: center; justify-content: space-between;
       background: white; border: 1px solid #dfe1e6; border-radius: 6px;
       padding: 10px 14px; margin-bottom: 8px;
     }
-    .list-name { font-size: 13px; font-weight: 500; color: #172b4d; }
+    .list-name {
+      font-size: 13px; font-weight: 500; color: #172b4d;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      max-width: 140px;
+    }
     .toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
     .toggle input { opacity: 0; width: 0; height: 0; }
     .slider {
@@ -41,12 +45,24 @@
     }
     .save-btn:hover { background: #0065ff; }
     .loading { text-align: center; color: #5e6c84; padding: 20px; }
+    .col-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0 14px; margin-bottom: 6px;
+    }
+    .col-label { font-size: 10px; font-weight: 600; color: #5e6c84; text-transform: uppercase; letter-spacing: 0.5px; }
   </style>
 </head>
 <body>
   <div id="root">
-    <h2>Done Lists</h2>
-    <p class="subtitle">Cards in these lists will stop accumulating time — their stage timer freezes when moved here.</p>
+    <h2>List Settings</h2>
+    <p class="subtitle">Set a threshold to flag slow cards in red. Mark lists as Done to freeze timers.</p>
+    <div class="col-header">
+      <span class="col-label">List</span>
+      <div style="display:flex;gap:24px">
+        <span class="col-label">Threshold</span>
+        <span class="col-label">Done</span>
+      </div>
+    </div>
     <div id="lists"><div class="loading">Loading lists...</div></div>
     <button class="save-btn" id="save" style="display:none">Save Settings</button>
   </div>

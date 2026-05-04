@@ -7,7 +7,7 @@ TrelloPowerUp.initialize({
   'card-back-section': function(t, options) {
     return {
       title: 'Time in List',
-      icon: 'https://trello-time-in-list.vercel.app/icon-small.png',
+      icon:  'https://trello-time-in-list.vercel.app/icon.png',
       content: {
         type:   'iframe',
         url:    t.signUrl('https://trello-time-in-list.vercel.app/card-section.html'),
@@ -23,17 +23,18 @@ TrelloPowerUp.initialize({
         if (!token) return [];
         return Promise.all([
           t.card('id', 'idList'),
-          t.get('board', 'shared', 'doneLists'),
+          t.get('board', 'shared', 'listSettings'),
           t.lists('id', 'name')
         ]).then(function(results) {
-          var card      = results[0];
-          var doneLists = results[1] || [];
-          var lists     = results[2] || [];
+          var card         = results[0];
+          var listSettings = results[1] || {};
+          var lists        = results[2] || [];
 
-          var currentListObj = lists.find(function(l) { return l.id === card.idList; });
+          var currentListObj  = lists.find(function(l) { return l.id === card.idList; });
           var currentListName = currentListObj ? currentListObj.name : '';
+          var setting = listSettings[currentListName] || {};
 
-          if (doneLists.indexOf(currentListName) > -1) {
+          if (setting.done) {
             return [{ text: '✓ Done', color: 'green', refresh: 86400 }];
           }
 
@@ -43,16 +44,19 @@ TrelloPowerUp.initialize({
           )
           .then(function(r) { return r.json(); })
           .then(function(data) {
-            if (data && data.length) return makeBadge(data[0].date, t);
-            return fetch(
-              'https://api.trello.com/1/cards/' + card.id +
-              '/actions?filter=createCard&limit=1&key=' + API_KEY + '&token=' + token
-            )
-            .then(function(r) { return r.json(); })
-            .then(function(cdata) {
-              if (cdata && cdata.length) return makeBadge(cdata[0].date, t);
-              return [];
-            });
+            var dateStr = (data && data.length) ? data[0].date : null;
+            if (!dateStr) {
+              return fetch(
+                'https://api.trello.com/1/cards/' + card.id +
+                '/actions?filter=createCard&limit=1&key=' + API_KEY + '&token=' + token
+              )
+              .then(function(r) { return r.json(); })
+              .then(function(cdata) {
+                if (cdata && cdata.length) return makeBadge(cdata[0].date, setting.threshold);
+                return [];
+              });
+            }
+            return makeBadge(dateStr, setting.threshold);
           });
         });
       })
@@ -83,17 +87,15 @@ TrelloPowerUp.initialize({
   scope: { read: true }
 });
 
-function makeBadge(dateStr, t) {
-  return t.get('board', 'shared', 'thresholdDays').then(function(val) {
-    var thresholdDays = (val && !isNaN(val)) ? parseInt(val) : 3;
-    var diff  = Date.now() - new Date(dateStr);
-    var isRed = diff > (thresholdDays * 24 * 60 * 60 * 1000);
-    return [{
-      text:    formatTime(diff),
-      color:   isRed ? 'red' : 'green',
-      refresh: 3600
-    }];
-  });
+function makeBadge(dateStr, threshold) {
+  var diff = Date.now() - new Date(dateStr);
+  var thresholdMs = threshold ? threshold * 24 * 60 * 60 * 1000 : 3 * 24 * 60 * 60 * 1000;
+  var isRed = diff > thresholdMs;
+  return [{
+    text:    formatTime(diff),
+    color:   isRed ? 'red' : 'green',
+    refresh: 3600
+  }];
 }
 
 function formatTime(ms) {
