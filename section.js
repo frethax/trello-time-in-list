@@ -233,10 +233,16 @@
     }
 
     if (timeline.length && listKeys.length) {
-      var timeCard = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;');
-      var tTitle = el('div', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px;');
-      tTitle.innerText = '📋 ' + L.timePerList;
-      timeCard.appendChild(tTitle);
+      var timeCard = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;overflow:hidden;');
+      var timeHead = el('div', 'display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;user-select:none;');
+      var timeLbl  = el('span', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;');
+      timeLbl.innerText = '📋 ' + L.timePerList;
+      var timeArrow = el('span', 'font-size:9px;color:#5e6c84;transition:transform 0.2s;');
+      timeArrow.innerText = '▶';
+      timeHead.appendChild(timeLbl);
+      timeHead.appendChild(timeArrow);
+      timeCard.appendChild(timeHead);
+      var timeBody = el('div', 'overflow:hidden;max-height:0;transition:max-height 0.25s ease;padding:0 14px;');
       listKeys.forEach(function(list) {
         var color = colorMap[list];
         var pct   = grandTotal > 0 ? (totals[list] / grandTotal * 100) : 0;
@@ -256,11 +262,25 @@
         var track = el('div', 'height:6px;background:#dfe1e6;border-radius:6px;overflow:hidden;');
         var fill  = el('div', 'height:100%;background:' + color + ';width:' + pct + '%;border-radius:6px;');
         track.appendChild(fill);
-        row.appendChild(meta);
-        row.appendChild(track);
+        timeBody.appendChild(row);
         timeCard.appendChild(row);
       });
       wrap.appendChild(timeCard);
+      timeCard.appendChild(timeBody);
+      var timeOpen = false;
+      timeHead.addEventListener('click', function() {
+        timeOpen = !timeOpen;
+        if (timeOpen) {
+          timeBody.style.maxHeight = timeBody.scrollHeight + 'px';
+          timeBody.style.paddingBottom = '12px';
+          timeArrow.style.transform = 'rotate(90deg)';
+        } else {
+          timeBody.style.maxHeight = '0';
+          timeBody.style.paddingBottom = '0';
+          timeArrow.style.transform = 'rotate(0deg)';
+        }
+        setTimeout(function(){ t.sizeTo('#root'); }, 300);
+      });
     }
 
     if (timeline.length) {
