@@ -69,7 +69,7 @@ TrelloPowerUp.initialize({
       icon: 'https://trello-time-in-list.vercel.app/icon.png',
       condition: 'admin',
       callback: function(t) {
-        return t.popup({
+        return t.modal({
           title: 'Time in List Settings',
           url:   t.signUrl('https://trello-time-in-list.vercel.app/settings.html'),
           height: 600
