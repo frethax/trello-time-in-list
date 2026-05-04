@@ -7,7 +7,7 @@ TrelloPowerUp.initialize({
   'card-back-section': function(t, options) {
     return {
       title: 'Time in List',
-      icon:  'https://trello-time-in-list.vercel.app/icon.png',
+      icon: 'https://trello-time-in-list.vercel.app/icon-small.png',
       content: {
         type:   'iframe',
         url:    t.signUrl('https://trello-time-in-list.vercel.app/card-section.html'),
