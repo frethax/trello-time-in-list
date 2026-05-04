@@ -9,7 +9,7 @@ var STRINGS = {
     listsTitle: 'List Settings',
     flagAfter:  'Flag after',
     days:       'days',
-    doneList:   'Done list',
+    doneList:   'Done list — freeze timers',
     save:       'Save Settings',
     loading:    'Loading...',
     error:      'Could not load lists. Please reconnect your account.'
@@ -19,7 +19,7 @@ var STRINGS = {
     listsTitle: 'Liste Ayarları',
     flagAfter:  'Uyar',
     days:       'günden sonra',
-    doneList:   'Tamamlandı',
+    doneList:   'Tamamlandı — süreyi dondur',
     save:       'Kaydet',
     loading:    'Yükleniyor...',
     error:      'Listeler yüklenemedi. Lütfen hesabınızı yeniden bağlayın.'
@@ -29,7 +29,7 @@ var STRINGS = {
     listsTitle: 'Configuración de listas',
     flagAfter:  'Marcar tras',
     days:       'días',
-    doneList:   'Lista finalizada',
+    doneList:   'Lista finalizada — congelar tiempo',
     save:       'Guardar',
     loading:    'Cargando...',
     error:      'No se pudieron cargar las listas. Vuelve a conectar tu cuenta.'
@@ -39,7 +39,7 @@ var STRINGS = {
     listsTitle: 'Configurações de listas',
     flagAfter:  'Sinalizar após',
     days:       'dias',
-    doneList:   'Lista concluída',
+    doneList:   'Lista concluída — congelar tempo',
     save:       'Salvar',
     loading:    'Carregando...',
     error:      'Não foi possível carregar as listas. Reconecte sua conta.'
@@ -47,10 +47,10 @@ var STRINGS = {
 };
 
 var LANGS = [
-  { code: 'en', label: '🇬🇧 EN' },
-  { code: 'tr', label: '🇹🇷 TR' },
-  { code: 'es', label: '🇪🇸 ES' },
-  { code: 'pt', label: '🇧🇷 PT' }
+  { code: 'en', label: 'English' },
+  { code: 'tr', label: 'Türkçe' },
+  { code: 'es', label: 'Español' },
+  { code: 'pt', label: 'Português' }
 ];
 
 var currentLang  = 'en';
@@ -86,17 +86,15 @@ function renderLists() {
     var item = document.createElement('div');
     item.className = 'list-item';
 
-    var nameSpan = document.createElement('span');
+    // List name
+    var nameSpan = document.createElement('div');
     nameSpan.className = 'list-name';
     nameSpan.innerText = list.name;
     nameSpan.title = list.name;
 
-    var controlRow = document.createElement('div');
-    controlRow.className = 'control-row';
-
-    // Threshold
-    var thresholdWrap = document.createElement('div');
-    thresholdWrap.className = 'threshold-wrap';
+    // Row 1: threshold
+    var row1 = document.createElement('div');
+    row1.className = 'item-row';
 
     var flagLabel = document.createElement('span');
     flagLabel.className = 'control-label';
@@ -115,13 +113,13 @@ function renderLists() {
     daysLabel.className = 'control-label';
     daysLabel.innerText = s.days;
 
-    thresholdWrap.appendChild(flagLabel);
-    thresholdWrap.appendChild(thresholdInput);
-    thresholdWrap.appendChild(daysLabel);
+    row1.appendChild(flagLabel);
+    row1.appendChild(thresholdInput);
+    row1.appendChild(daysLabel);
 
-    // Done toggle
-    var doneWrap = document.createElement('div');
-    doneWrap.className = 'done-wrap';
+    // Row 2: done toggle
+    var row2 = document.createElement('div');
+    row2.className = 'item-row item-row-done';
 
     var doneLabel = document.createElement('span');
     doneLabel.className = 'control-label';
@@ -141,13 +139,13 @@ function renderLists() {
 
     toggleLabel.appendChild(checkbox);
     toggleLabel.appendChild(slider);
-    doneWrap.appendChild(doneLabel);
-    doneWrap.appendChild(toggleLabel);
 
-    controlRow.appendChild(thresholdWrap);
-    controlRow.appendChild(doneWrap);
+    row2.appendChild(doneLabel);
+    row2.appendChild(toggleLabel);
+
     item.appendChild(nameSpan);
-    item.appendChild(controlRow);
+    item.appendChild(row1);
+    item.appendChild(row2);
     container.appendChild(item);
   });
 }
@@ -160,8 +158,8 @@ t.render(function() {
       t.get('board', 'shared', 'listSettings'),
       t.get('board', 'shared', 'language')
     ]).then(function(results) {
-      var boardId  = results[0].id;
-      listSettings = results[1] || {};
+      var boardId   = results[0].id;
+      listSettings  = results[1] || {};
       var savedLang = results[2] || 'en';
 
       currentLang = savedLang;
