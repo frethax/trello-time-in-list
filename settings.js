@@ -9,7 +9,7 @@ var STRINGS = {
     listsTitle: 'List Settings',
     flagAfter:  'Flag after',
     days:       'days',
-    doneList:   'Done list — freeze timers',
+    doneList:   'Done',
     save:       'Save Settings',
     loading:    'Loading...',
     error:      'Could not load lists. Please reconnect your account.'
@@ -18,8 +18,8 @@ var STRINGS = {
     langTitle:  'Dil',
     listsTitle: 'Liste Ayarları',
     flagAfter:  'Uyar',
-    days:       'günden sonra',
-    doneList:   'Tamamlandı — süreyi dondur',
+    days:       'gün',
+    doneList:   'Tamamlandı',
     save:       'Kaydet',
     loading:    'Yükleniyor...',
     error:      'Listeler yüklenemedi. Lütfen hesabınızı yeniden bağlayın.'
@@ -29,7 +29,7 @@ var STRINGS = {
     listsTitle: 'Configuración de listas',
     flagAfter:  'Marcar tras',
     days:       'días',
-    doneList:   'Lista finalizada — congelar tiempo',
+    doneList:   'Hecho',
     save:       'Guardar',
     loading:    'Cargando...',
     error:      'No se pudieron cargar las listas. Vuelve a conectar tu cuenta.'
@@ -39,7 +39,7 @@ var STRINGS = {
     listsTitle: 'Configurações de listas',
     flagAfter:  'Sinalizar após',
     days:       'dias',
-    doneList:   'Lista concluída — congelar tempo',
+    doneList:   'Concluído',
     save:       'Salvar',
     loading:    'Carregando...',
     error:      'Não foi possível carregar as listas. Reconecte sua conta.'
@@ -80,25 +80,33 @@ function renderLists() {
   var container = document.getElementById('lists');
   container.innerHTML = '';
 
+  // Header row
+  var header = document.createElement('div');
+  header.className = 'list-header';
+  header.innerHTML =
+    '<span class="header-name"></span>' +
+    '<span class="header-right">' +
+      '<span class="header-label">' + s.flagAfter + '</span>' +
+      '<span class="header-label header-days">' + s.days + '</span>' +
+      '<span class="header-label">' + s.doneList + '</span>' +
+    '</span>';
+  container.appendChild(header);
+
   boardLists.forEach(function(list) {
     var saved = listSettings[list.name] || { done: false, threshold: '' };
 
     var item = document.createElement('div');
     item.className = 'list-item';
 
-    // List name
-    var nameSpan = document.createElement('div');
+    // Name
+    var nameSpan = document.createElement('span');
     nameSpan.className = 'list-name';
     nameSpan.innerText = list.name;
     nameSpan.title = list.name;
 
-    // Row 1: threshold
-    var row1 = document.createElement('div');
-    row1.className = 'item-row';
-
-    var flagLabel = document.createElement('span');
-    flagLabel.className = 'control-label';
-    flagLabel.innerText = s.flagAfter;
+    // Controls
+    var controls = document.createElement('div');
+    controls.className = 'item-controls';
 
     var thresholdInput = document.createElement('input');
     thresholdInput.type = 'number';
@@ -108,22 +116,6 @@ function renderLists() {
     thresholdInput.value = saved.threshold || '';
     thresholdInput.dataset.name = list.name;
     thresholdInput.className = 'threshold-input';
-
-    var daysLabel = document.createElement('span');
-    daysLabel.className = 'control-label';
-    daysLabel.innerText = s.days;
-
-    row1.appendChild(flagLabel);
-    row1.appendChild(thresholdInput);
-    row1.appendChild(daysLabel);
-
-    // Row 2: done toggle
-    var row2 = document.createElement('div');
-    row2.className = 'item-row item-row-done';
-
-    var doneLabel = document.createElement('span');
-    doneLabel.className = 'control-label';
-    doneLabel.innerText = s.doneList;
 
     var toggleLabel = document.createElement('label');
     toggleLabel.className = 'toggle';
@@ -140,12 +132,11 @@ function renderLists() {
     toggleLabel.appendChild(checkbox);
     toggleLabel.appendChild(slider);
 
-    row2.appendChild(doneLabel);
-    row2.appendChild(toggleLabel);
+    controls.appendChild(thresholdInput);
+    controls.appendChild(toggleLabel);
 
     item.appendChild(nameSpan);
-    item.appendChild(row1);
-    item.appendChild(row2);
+    item.appendChild(controls);
     container.appendChild(item);
   });
 }
