@@ -5,44 +5,40 @@ var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'Time in List' });
 
 var STRINGS = {
   en: {
-    langTitle:  'Language',
-    listsTitle: 'List Settings',
-    flagAfter:  'Flag after',
-    days:       'days',
-    doneList:   'Done',
-    save:       'Save Settings',
-    loading:    'Loading...',
-    error:      'Could not load lists. Please reconnect your account.'
+    langTitle:   'Language',
+    listsTitle:  'List Settings',
+    placeholder: 'days',
+    doneTitle:   'Done list — freeze timers',
+    save:        'Save Settings',
+    loading:     'Loading...',
+    error:       'Could not load lists. Please reconnect your account.'
   },
   tr: {
-    langTitle:  'Dil',
-    listsTitle: 'Liste Ayarları',
-    flagAfter:  'Uyar',
-    days:       'gün',
-    doneList:   'Tamamlandı',
-    save:       'Kaydet',
-    loading:    'Yükleniyor...',
-    error:      'Listeler yüklenemedi. Lütfen hesabınızı yeniden bağlayın.'
+    langTitle:   'Dil',
+    listsTitle:  'Liste Ayarları',
+    placeholder: 'gün',
+    doneTitle:   'Tamamlandı — süreyi dondur',
+    save:        'Kaydet',
+    loading:     'Yükleniyor...',
+    error:       'Listeler yüklenemedi. Lütfen hesabınızı yeniden bağlayın.'
   },
   es: {
-    langTitle:  'Idioma',
-    listsTitle: 'Configuración de listas',
-    flagAfter:  'Marcar tras',
-    days:       'días',
-    doneList:   'Hecho',
-    save:       'Guardar',
-    loading:    'Cargando...',
-    error:      'No se pudieron cargar las listas. Vuelve a conectar tu cuenta.'
+    langTitle:   'Idioma',
+    listsTitle:  'Configuración de listas',
+    placeholder: 'días',
+    doneTitle:   'Lista finalizada — congelar tiempo',
+    save:        'Guardar',
+    loading:     'Cargando...',
+    error:       'No se pudieron cargar las listas. Vuelve a conectar tu cuenta.'
   },
   pt: {
-    langTitle:  'Idioma',
-    listsTitle: 'Configurações de listas',
-    flagAfter:  'Sinalizar após',
-    days:       'dias',
-    doneList:   'Concluído',
-    save:       'Salvar',
-    loading:    'Carregando...',
-    error:      'Não foi possível carregar as listas. Reconecte sua conta.'
+    langTitle:   'Idioma',
+    listsTitle:  'Configurações de listas',
+    placeholder: 'dias',
+    doneTitle:   'Lista concluída — congelar tempo',
+    save:        'Salvar',
+    loading:     'Carregando...',
+    error:       'Não foi possível carregar as listas. Reconecte sua conta.'
   }
 };
 
@@ -80,17 +76,6 @@ function renderLists() {
   var container = document.getElementById('lists');
   container.innerHTML = '';
 
-  // Header row
- var header = document.createElement('div');
-header.className = 'list-header';
-header.innerHTML =
-  '<span class="header-name"></span>' +
-  '<span class="header-right">' +
-    '<span class="header-label header-input-col">Days</span>' +
-    '<span class="header-label header-toggle-col">Done</span>' +
-  '</span>';
-  container.appendChild(header);
-
   boardLists.forEach(function(list) {
     var saved = listSettings[list.name] || { done: false, threshold: '' };
 
@@ -107,14 +92,21 @@ header.innerHTML =
     var controls = document.createElement('div');
     controls.className = 'item-controls';
 
+    // Threshold input with days placeholder
     var thresholdInput = document.createElement('input');
     thresholdInput.type = 'number';
     thresholdInput.min = '1';
     thresholdInput.max = '999';
-    thresholdInput.placeholder = '—';
+    thresholdInput.placeholder = s.placeholder;
     thresholdInput.value = saved.threshold || '';
     thresholdInput.dataset.name = list.name;
     thresholdInput.className = 'threshold-input';
+    thresholdInput.title = 'Flag after N days';
+
+    // Done toggle with tooltip
+    var toggleWrap = document.createElement('div');
+    toggleWrap.className = 'toggle-wrap';
+    toggleWrap.title = s.doneTitle;
 
     var toggleLabel = document.createElement('label');
     toggleLabel.className = 'toggle';
@@ -130,9 +122,10 @@ header.innerHTML =
 
     toggleLabel.appendChild(checkbox);
     toggleLabel.appendChild(slider);
+    toggleWrap.appendChild(toggleLabel);
 
     controls.appendChild(thresholdInput);
-    controls.appendChild(toggleLabel);
+    controls.appendChild(toggleWrap);
 
     item.appendChild(nameSpan);
     item.appendChild(controls);

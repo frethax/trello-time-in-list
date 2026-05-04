@@ -26,40 +26,29 @@
     .lang-btn:hover { border-color: #0052cc; color: #0052cc; }
     .lang-btn.active { border-color: #0052cc; color: #0052cc; background: #e8f0ff; }
 
-    /* List header */
-    .list-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 10px 6px;
-    }
-    .header-name { flex: 1; }
-.header-right { display: flex; align-items: center; gap: 0; flex-shrink: 0; } .header-input-col { width: 76px; text-align: center; } .header-toggle-col { width: 52px; text-align: center; }
-    .header-label { font-size: 10px; font-weight: 600; color: #97a0af; text-transform: uppercase; letter-spacing: 0.4px; }
-    .header-days { width: 64px; text-align: center; }
-.header-days { width: 64px; text-align: center; }
-.header-input-col { width: 64px; text-align: center; }
-.header-toggle-col { width: 40px; text-align: center; }
-    /* List items */
     .list-item {
       display: flex; align-items: center; justify-content: space-between;
       background: white; border: 1px solid #dfe1e6;
-      border-radius: 8px; padding: 10px 12px; margin-bottom: 6px;
-      gap: 8px;
+      border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;
+      gap: 12px;
     }
     .list-name {
       flex: 1; font-size: 13px; font-weight: 500; color: #172b4d;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       min-width: 0;
     }
-    ..item-controls { display: flex; align-items: center; gap: 0; flex-shrink: 0; }
-.threshold-input { width: 76px; ... }
-.toggle { width: 52px; ... }
+    .item-controls {
+      display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    }
     .threshold-input {
-      width: 64px; padding: 5px 8px;
+      width: 72px; padding: 5px 8px;
       border: 1px solid #dfe1e6; border-radius: 6px;
       font-size: 13px; text-align: center; color: #172b4d;
     }
     .threshold-input:focus { outline: none; border-color: #0052cc; }
+    .threshold-input::placeholder { color: #97a0af; font-size: 12px; }
 
+    .toggle-wrap { display: flex; align-items: center; }
     .toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
     .toggle input { opacity: 0; width: 0; height: 0; }
     .slider {
