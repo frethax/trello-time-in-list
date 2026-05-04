@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px;
+      color: #172b4d;
+      background: #f4f5f7;
+      padding: 16px;
+    }
+    h2 { font-size: 14px; font-weight: 700; color: #172b4d; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: #5e6c84; margin-bottom: 16px; }
+    .list-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: white; border: 1px solid #dfe1e6; border-radius: 6px;
+      padding: 10px 14px; margin-bottom: 8px;
+    }
+    .list-name { font-size: 13px; font-weight: 500; color: #172b4d; }
+    .toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #dfe1e6; border-radius: 20px; transition: 0.2s;
+    }
+    .slider:before {
+      position: absolute; content: "";
+      height: 14px; width: 14px; left: 3px; bottom: 3px;
+      background: white; border-radius: 50%; transition: 0.2s;
+    }
+    input:checked + .slider { background: #0052cc; }
+    input:checked + .slider:before { transform: translateX(16px); }
+    .save-btn {
+      width: 100%; padding: 10px; background: #0052cc; color: white;
+      border: none; border-radius: 6px; font-size: 13px; font-weight: 600;
+      cursor: pointer; margin-top: 8px;
+    }
+    .save-btn:hover { background: #0065ff; }
+    .loading { text-align: center; color: #5e6c84; padding: 20px; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <h2>Done Lists</h2>
+    <p class="subtitle">Cards in these lists will stop accumulating time — their stage timer freezes when moved here.</p>
+    <div id="lists"><div class="loading">Loading lists...</div></div>
+    <button class="save-btn" id="save" style="display:none">Save Settings</button>
+  </div>
+
+  <script>
+    var API_KEY = '526d48a7eb9050082ce280fe0ac1a67f';
+    var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'Time in List' });
+
+    t.render(function() {
+      var restApi = t.getRestApi();
+      return restApi.getToken().then(function(token) {
+        return Promise.all([
+          t.board('id'),
+          t.get('board', 'shared', 'doneLists')
+        ]).then(function(results) {
+          var boardId = results[0].id;
+          var saved   = results[1] || [];
+
+          return fetch(
+            'https://api.trello.com/1/boards/' + boardId +
+            '/lists?key=' + API_KEY + '&token=' + token
+          )
+          .then(function(r) { return r.json(); })
+          .then(function(lists) {
+            var container = document.getElementById('lists');
+            container.innerHTML = '';
+
+            lists.forEach(function(list) {
+              var item = document.createElement('div');
+              item.className = 'list-item';
+
+              var nameSpan = document.createElement('span');
+              nameSpan.className = 'list-name';
+              nameSpan.innerText = list.name;
+
+              var label = document.createElement('label');
+              label.className = 'toggle';
+
+              var input = document.createElement('input');
+              input.type = 'checkbox';
+              input.checked = saved.indexOf(list.name) > -1;
+              input.dataset.name = list.name;
+
+              var slider = document.createElement('span');
+              slider.className = 'slider';
+
+              label.appendChild(input);
+              label.appendChild(slider);
+              item.appendChild(nameSpan);
+              item.appendChild(label);
+              container.appendChild(item);
+            });
+
+            document.getElementById('save').style.display = 'block';
+          });
+        });
+      }).catch(function() {
+        document.getElementById('lists').innerHTML =
+          '<div class="loading">Could not load lists. Please reconnect your account.</div>';
+      });
+    });
+
+    document.getElementById('save').addEventListener('click', function() {
+      var checked = [];
+      document.querySelectorAll('input[type=checkbox]:checked').forEach(function(cb) {
+        checked.push(cb.dataset.name);
+      });
+      t.set('board', 'shared', 'doneLists', checked).then(function() {
+        t.closePopup();
+      });
+    });
+  </script>
+</body>
+</html>
