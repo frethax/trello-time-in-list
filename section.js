@@ -204,11 +204,11 @@
     row1.appendChild(infoCard(
       '⏱', L.currentStage,
       '<div style="font-size:13px;font-weight:600;color:#172b4d;margin-bottom:3px">' + escHtml(currentList) + '</div>' +
-      '<div style="font-size:22px;font-weight:700;color:' + stageColor + ';line-height:1.2">' + formatTime(currentStageTime) + '</div>'
+      '<div style="font-size:16px;font-weight:700;color:' + stageColor + ';line-height:1.2">' + formatTime(currentStageTime) + '</div>'
     ));
     row1.appendChild(infoCard(
       '📊', L.cardAge,
-      '<div style="font-size:22px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>'
+      '<div style="font-size:13px;font-weight:600;color:#172b4d;margin-bottom:3px">Since creation</div>' + '<div style="font-size:18px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>'
     ));
     wrap.appendChild(row1);
 
