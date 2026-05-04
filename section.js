@@ -4,6 +4,69 @@
 
   var API_KEY = '526d48a7eb9050082ce280fe0ac1a67f';
 
+  var STRINGS = {
+    en: {
+      currentStage:  'Current Stage',
+      cardAge:       'Card Age',
+      mostActive:    'Most Active',
+      createdBy:     'Created By',
+      timePerList:   'Time Per List',
+      cardHistory:   'Card History',
+      noData:        'No action data found for this card.',
+      noChanges:     'No list changes yet.',
+      couldNotLoad:  'Could not load data. Please refresh.',
+      connectBtn:    'Connect Trello Account',
+      connectMsg:    'Connect your Trello account to see card timing data.',
+      doneBanner:    '✓ This card is in a Done list — timers are frozen.',
+      unknown:       'Unknown'
+    },
+    tr: {
+      currentStage:  'Mevcut Aşama',
+      cardAge:       'Kart Yaşı',
+      mostActive:    'En Aktif',
+      createdBy:     'Kartı Açan',
+      timePerList:   'Liste Bazlı Süre',
+      cardHistory:   'Kart Geçmişi',
+      noData:        'Bu kart için veri bulunamadı.',
+      noChanges:     'Henüz liste değişimi yok.',
+      couldNotLoad:  'Veri yüklenemedi. Lütfen sayfayı yenileyin.',
+      connectBtn:    'Trello Hesabını Bağla',
+      connectMsg:    'Kart verilerini görmek için Trello hesabınızı bağlayın.',
+      doneBanner:    '✓ Bu kart Tamamlandı listesinde — süreler donduruldu.',
+      unknown:       'Bilinmiyor'
+    },
+    es: {
+      currentStage:  'Etapa Actual',
+      cardAge:       'Edad de la Tarjeta',
+      mostActive:    'Más Activo',
+      createdBy:     'Creado Por',
+      timePerList:   'Tiempo por Lista',
+      cardHistory:   'Historial',
+      noData:        'No se encontraron datos para esta tarjeta.',
+      noChanges:     'Sin cambios de lista aún.',
+      couldNotLoad:  'No se pudieron cargar los datos. Actualiza la página.',
+      connectBtn:    'Conectar Cuenta de Trello',
+      connectMsg:    'Conecta tu cuenta de Trello para ver los datos de tiempo.',
+      doneBanner:    '✓ Esta tarjeta está en una lista Done — los temporizadores están congelados.',
+      unknown:       'Desconocido'
+    },
+    pt: {
+      currentStage:  'Etapa Atual',
+      cardAge:       'Idade do Cartão',
+      mostActive:    'Mais Ativo',
+      createdBy:     'Criado Por',
+      timePerList:   'Tempo por Lista',
+      cardHistory:   'Histórico',
+      noData:        'Nenhum dado encontrado para este cartão.',
+      noChanges:     'Sem alterações de lista ainda.',
+      couldNotLoad:  'Não foi possível carregar os dados. Atualize a página.',
+      connectBtn:    'Conectar Conta Trello',
+      connectMsg:    'Conecte sua conta Trello para ver os dados de tempo.',
+      doneBanner:    '✓ Este cartão está em uma lista Done — os temporizadores estão congelados.',
+      unknown:       'Desconhecido'
+    }
+  };
+
   var t = TrelloPowerUp.iframe({
     appKey:  API_KEY,
     appName: 'Time in List'
@@ -13,22 +76,26 @@
     var restApi = t.getRestApi();
     return restApi.getToken()
       .then(function(token) {
-        if (!token) { return showAuth(); }
-        return loadCard(token);
+        if (!token) { return showAuth('en'); }
+        return t.get('board', 'shared', 'language').then(function(lang) {
+          var L = STRINGS[lang] || STRINGS['en'];
+          return loadCard(token, L);
+        });
       })
-      .catch(function() { return showAuth(); });
+      .catch(function() { return showAuth('en'); });
   });
 
-  function showAuth() {
+  function showAuth(lang) {
+    var L = STRINGS[lang] || STRINGS['en'];
     var root = document.getElementById('root');
     root.innerHTML = '';
     var wrap = document.createElement('div');
     wrap.style.cssText = 'padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;';
     var msg = document.createElement('div');
     msg.style.cssText = 'font-size:13px;color:#5e6c84;margin-bottom:12px;';
-    msg.innerText = 'Connect your Trello account to see card timing data.';
+    msg.innerText = L.connectMsg;
     var btn = document.createElement('button');
-    btn.innerText = 'Connect Trello Account';
+    btn.innerText = L.connectBtn;
     btn.style.cssText = 'background:#0052cc;color:white;border:none;padding:8px 16px;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer';
     btn.addEventListener('click', function() {
       var restApi = t.getRestApi();
@@ -41,18 +108,19 @@
     t.sizeTo('#root');
   }
 
-  function loadCard(token) {
+  function loadCard(token, L) {
     return Promise.all([
       t.card('id', 'idList'),
       t.get('board', 'shared', 'listSettings'),
       t.lists('id', 'name')
     ]).then(function(results) {
-      var card      = results[0];
+      var card         = results[0];
       var listSettings = results[1] || {};
-      var lists     = results[2] || [];
+      var lists        = results[2] || [];
       var currentListObj  = lists.find(function(l) { return l.id === card.idList; });
       var currentListName = currentListObj ? currentListObj.name : '';
-      var setting = listSettings[currentListName] || {}; var isDone = setting.done || false;
+      var setting = listSettings[currentListName] || {};
+      var isDone  = setting.done || false;
 
       return fetch(
         'https://api.trello.com/1/cards/' + card.id +
@@ -63,16 +131,16 @@
       .then(function(actions) {
         if (!actions || !actions.length) {
           document.getElementById('root').innerHTML =
-            '<div style="font-size:12px;color:#5e6c84;padding:16px">No action data found for this card.</div>';
+            '<div style="font-size:12px;color:#5e6c84;padding:16px">' + L.noData + '</div>';
           t.sizeTo('#root');
           return;
         }
-        renderPanel(actions, isDone);
+        renderPanel(actions, isDone, L);
       });
     });
   }
 
-  function renderPanel(actions, isDone) {
+  function renderPanel(actions, isDone, L) {
     var ordered = actions.slice().reverse();
     var moveActions  = ordered.filter(function(a){ return a.data && a.data.listAfter; });
     var createAction = ordered.find(function(a){ return a.type === 'createCard'; });
@@ -81,8 +149,7 @@
     var currentList = (lastMove.data && lastMove.data.listAfter)
       ? lastMove.data.listAfter.name
       : (createAction && createAction.data && createAction.data.list
-        ? createAction.data.list.name
-        : 'Unknown');
+        ? createAction.data.list.name : L.unknown);
 
     var frozenAt = isDone ? new Date(lastMove.date) : new Date();
     var currentStageTime = frozenAt - new Date(lastMove.date);
@@ -116,11 +183,10 @@
     var root = document.getElementById('root');
     root.innerHTML = '';
 
-    // Done banner
     if (isDone) {
       var banner = document.createElement('div');
-      banner.style.cssText = 'background:#e3fcef;border:1px solid #abf5d1;border-radius:6px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:#006644;font-weight:500;display:flex;align-items:center;gap:6px;';
-      banner.innerHTML = '✓ This card is in a Done list — timers are frozen.';
+      banner.style.cssText = 'background:#e3fcef;border:1px solid #abf5d1;border-radius:6px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:#006644;font-weight:500;';
+      banner.innerText = L.doneBanner;
       root.appendChild(banner);
     }
 
@@ -141,18 +207,18 @@
 
     var stageColor = isDone ? '#5e6c84' : '#2ea043';
     var leftHTML = '';
-    leftHTML += leftRow('⏱', 'Current Stage',
+    leftHTML += leftRow('⏱', L.currentStage,
       '<div style="font-size:13px;font-weight:600;color:#172b4d;margin-bottom:2px">' + escHtml(currentList) + '</div>' +
       '<div style="font-size:20px;font-weight:700;color:' + stageColor + ';line-height:1.2">' + formatTime(currentStageTime) + '</div>', false);
-    leftHTML += leftRow('📊', 'Card Age',
+    leftHTML += leftRow('📊', L.cardAge,
       '<div style="font-size:20px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>', false);
     if (mostActive) {
-      leftHTML += leftRow('👤', 'Most Active',
+      leftHTML += leftRow('👤', L.mostActive,
         '<div style="font-size:14px;font-weight:600;color:#172b4d">' + escHtml(mostActive) +
         ' <span style="color:#5e6c84;font-weight:400">(' + mostActiveCount + ')</span></div>', !createdBy);
     }
     if (createdBy) {
-      leftHTML += leftRow('⭐', 'Created By',
+      leftHTML += leftRow('⭐', L.createdBy,
         '<div style="font-size:14px;font-weight:600;color:#172b4d">' + escHtml(createdBy) + '</div>', true);
     }
     left.innerHTML = leftHTML;
@@ -161,9 +227,9 @@
     right.style.cssText = 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;';
 
     if (!timeline.length) {
-      right.innerHTML = '<div style="font-size:12px;color:#5e6c84">No list changes yet.</div>';
+      right.innerHTML = '<div style="font-size:12px;color:#5e6c84">' + L.noChanges + '</div>';
     } else {
-      var rightHTML = '<div style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">📋 Time Per List</div>';
+      var rightHTML = '<div style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">📋 ' + L.timePerList + '</div>';
       listKeys.forEach(function(list) {
         var color = colorMap[list];
         var pct   = grandTotal > 0 ? (totals[list] / grandTotal * 100) : 0;
@@ -181,7 +247,7 @@
 
       var histTitle = document.createElement('div');
       histTitle.style.cssText = 'display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;';
-      histTitle.innerHTML = '<span style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px">≡ Card History</span><span id="tl-arrow" style="font-size:9px;color:#5e6c84;transition:transform 0.2s">▶</span>';
+      histTitle.innerHTML = '<span style="font-size:10px;font-weight:600;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px">≡ ' + L.cardHistory + '</span><span id="tl-arrow" style="font-size:9px;color:#5e6c84;transition:transform 0.2s">▶</span>';
       right.appendChild(histTitle);
 
       var tlList = document.createElement('div');
@@ -271,9 +337,7 @@
       var last = moveActions[moveActions.length-1];
       var endTime = isDone ? new Date(last.date) : new Date();
       var lastDuration = endTime - new Date(last.date);
-      if (lastDuration >= 0) {
-        timeline.push({ list: last.data.listAfter.name, date: new Date(last.date), duration: lastDuration });
-      }
+      if (lastDuration >= 0) timeline.push({ list: last.data.listAfter.name, date: new Date(last.date), duration: lastDuration });
     }
     return timeline;
   }
