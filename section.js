@@ -72,20 +72,23 @@
     appName: 'Time in List'
   });
 
-  t.render(function() {
+ t.render(function() {
     var restApi = t.getRestApi();
-    return restApi.getToken()
-      .then(function(token) {
-        if (!token) { return showAuth('en'); }
-        return t.get('board', 'shared', 'language').then(function(lang) {
-          var L = STRINGS[lang] || STRINGS['en'];
-          return loadCard(token, L);
-        });
-      })
-      .catch(function() { return showAuth('en'); });
+    return Promise.all([
+      restApi.getToken(),
+      t.get('board', 'shared', 'language')
+    ])
+    .then(function(results) {
+      var token = results[0];
+      var lang  = results[1] || 'en';
+      var L = STRINGS[lang] || STRINGS['en'];
+      if (!token) { return showAuth(L); }
+      return loadCard(token, L);
+    })
+    .catch(function() { return showAuth(STRINGS['en']); });
   });
 
-  function showAuth(lang) {
+  function showAuth(L) {
     var L = STRINGS[lang] || STRINGS['en'];
     var root = document.getElementById('root');
     root.innerHTML = '';
