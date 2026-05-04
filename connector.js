@@ -72,7 +72,7 @@ TrelloPowerUp.initialize({
         return t.popup({
           title: 'Time in List Settings',
           url:   t.signUrl('https://trello-time-in-list.vercel.app/settings.html'),
-          height: 400
+          height: 600
         });
       }
     }];
