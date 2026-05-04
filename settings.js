@@ -7,8 +7,9 @@ var STRINGS = {
   en: {
     langTitle:   'Language',
     listsTitle:  'List Settings',
-    placeholder: 'days',
-    doneTitle:   'Done list — freeze timers',
+    flagLabel:   '🚩 Flag after',
+    days:        'days',
+    doneLabel:   '✓ Done',
     save:        'Save Settings',
     loading:     'Loading...',
     error:       'Could not load lists. Please reconnect your account.'
@@ -16,8 +17,9 @@ var STRINGS = {
   tr: {
     langTitle:   'Dil',
     listsTitle:  'Liste Ayarları',
-    placeholder: 'gün',
-    doneTitle:   'Tamamlandı — süreyi dondur',
+    flagLabel:   '🚩 Uyar',
+    days:        'günden sonra',
+    doneLabel:   '✓ Tamamlandı',
     save:        'Kaydet',
     loading:     'Yükleniyor...',
     error:       'Listeler yüklenemedi. Lütfen hesabınızı yeniden bağlayın.'
@@ -25,8 +27,9 @@ var STRINGS = {
   es: {
     langTitle:   'Idioma',
     listsTitle:  'Configuración de listas',
-    placeholder: 'días',
-    doneTitle:   'Lista finalizada — congelar tiempo',
+    flagLabel:   '🚩 Marcar tras',
+    days:        'días',
+    doneLabel:   '✓ Hecho',
     save:        'Guardar',
     loading:     'Cargando...',
     error:       'No se pudieron cargar las listas. Vuelve a conectar tu cuenta.'
@@ -34,8 +37,9 @@ var STRINGS = {
   pt: {
     langTitle:   'Idioma',
     listsTitle:  'Configurações de listas',
-    placeholder: 'dias',
-    doneTitle:   'Lista concluída — congelar tempo',
+    flagLabel:   '🚩 Sinalizar após',
+    days:        'dias',
+    doneLabel:   '✓ Concluído',
     save:        'Salvar',
     loading:     'Carregando...',
     error:       'Não foi possível carregar as listas. Reconecte sua conta.'
@@ -82,31 +86,48 @@ function renderLists() {
     var item = document.createElement('div');
     item.className = 'list-item';
 
-    // Name
-    var nameSpan = document.createElement('span');
+    // Name row
+    var nameSpan = document.createElement('div');
     nameSpan.className = 'list-name';
     nameSpan.innerText = list.name;
     nameSpan.title = list.name;
 
-    // Controls
+    // Controls row
     var controls = document.createElement('div');
     controls.className = 'item-controls';
 
-    // Threshold input with days placeholder
+    // Flag section
+    var flagWrap = document.createElement('div');
+    flagWrap.className = 'control-group';
+
+    var flagLabel = document.createElement('span');
+    flagLabel.className = 'control-label';
+    flagLabel.innerText = s.flagLabel;
+
     var thresholdInput = document.createElement('input');
     thresholdInput.type = 'number';
     thresholdInput.min = '1';
     thresholdInput.max = '999';
-    thresholdInput.placeholder = s.placeholder;
+    thresholdInput.placeholder = '—';
     thresholdInput.value = saved.threshold || '';
     thresholdInput.dataset.name = list.name;
     thresholdInput.className = 'threshold-input';
-    thresholdInput.title = 'Flag after N days';
 
-    // Done toggle with tooltip
-    var toggleWrap = document.createElement('div');
-    toggleWrap.className = 'toggle-wrap';
-    toggleWrap.title = s.doneTitle;
+    var daysLabel = document.createElement('span');
+    daysLabel.className = 'control-label';
+    daysLabel.innerText = s.days;
+
+    flagWrap.appendChild(flagLabel);
+    flagWrap.appendChild(thresholdInput);
+    flagWrap.appendChild(daysLabel);
+
+    // Done section
+    var doneWrap = document.createElement('div');
+    doneWrap.className = 'control-group';
+
+    var doneLabel = document.createElement('span');
+    doneLabel.className = 'control-label';
+    doneLabel.innerText = s.doneLabel;
 
     var toggleLabel = document.createElement('label');
     toggleLabel.className = 'toggle';
@@ -122,10 +143,11 @@ function renderLists() {
 
     toggleLabel.appendChild(checkbox);
     toggleLabel.appendChild(slider);
-    toggleWrap.appendChild(toggleLabel);
+    doneWrap.appendChild(doneLabel);
+    doneWrap.appendChild(toggleLabel);
 
-    controls.appendChild(thresholdInput);
-    controls.appendChild(toggleWrap);
+    controls.appendChild(flagWrap);
+    controls.appendChild(doneWrap);
 
     item.appendChild(nameSpan);
     item.appendChild(controls);
