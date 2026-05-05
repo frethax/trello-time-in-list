@@ -200,31 +200,20 @@
       wrap.appendChild(banner);
     }
 
-    var row1 = el('div', 'display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;');
+    var row1 = el('div', 'display:grid;grid-template-columns:1fr 1fr;gap:8px;');
     var stageColor = isDone ? '#5e6c84' : '#2ea043';
     row1.appendChild(infoCard(
       '⏱', L.currentStage,
-      '<div style="font-size:11px;font-weight:600;color:#172b4d;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(currentList) + '</div>' +
-      '<div style="font-size:13px;font-weight:700;color:' + stageColor + ';line-height:1.2">' + formatTime(currentStageTime) + '</div>'
+      '<div style="font-size:12px;font-weight:600;color:#172b4d;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(currentList) + '</div>' +
+      '<div style="font-size:15px;font-weight:700;color:' + stageColor + ';line-height:1.2;margin-bottom:6px">' + formatTime(currentStageTime) + '</div>' +
+      (mostActive ? '<div style="font-size:10px;color:#5e6c84;text-transform:uppercase;font-weight:600;letter-spacing:0.4px;margin-bottom:2px">👤 ' + L.mostActive + '</div><div style="font-size:12px;font-weight:600;color:#172b4d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(mostActive) + ' <span style="color:#5e6c84;font-weight:400">(' + mostActiveCount + ')</span></div>' : '')
     ));
     row1.appendChild(infoCard(
       '📊', L.cardAge,
-      '<div style="font-size:11px;font-weight:600;color:#172b4d;margin-bottom:2px">' + L.sinceCreation + '</div>' +
-      '<div style="font-size:13px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>'
+      '<div style="font-size:12px;font-weight:600;color:#172b4d;margin-bottom:2px">' + L.sinceCreation + '</div>' +
+      '<div style="font-size:15px;font-weight:700;color:#0052cc;line-height:1.2;margin-bottom:6px">' + formatTime(totalTime) + '</div>' +
+      (createdBy ? '<div style="font-size:10px;color:#5e6c84;text-transform:uppercase;font-weight:600;letter-spacing:0.4px;margin-bottom:2px">⭐ ' + L.createdBy + '</div><div style="font-size:12px;font-weight:600;color:#172b4d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(createdBy) + '</div>' : '')
     ));
-    if (mostActive) {
-      row1.appendChild(infoCard(
-        '👤', L.mostActive,
-        '<div style="font-size:12px;font-weight:600;color:#172b4d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(mostActive) +
-        '</div><div style="font-size:11px;color:#5e6c84">(' + mostActiveCount + ')</div>'
-      ));
-    }
-    if (createdBy) {
-      row1.appendChild(infoCard(
-        '⭐', L.createdBy,
-        '<div style="font-size:12px;font-weight:600;color:#172b4d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(createdBy) + '</div>'
-      ));
-    }
     wrap.appendChild(row1);
 
     // Time Per List - collapsible
