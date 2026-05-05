@@ -232,6 +232,7 @@
       wrap.appendChild(row2);
     }
 
+    // Time Per List - collapsible
     if (timeline.length && listKeys.length) {
       var timeCard = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;overflow:hidden;');
       var timeHead = el('div', 'display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;user-select:none;');
@@ -242,6 +243,7 @@
       timeHead.appendChild(timeLbl);
       timeHead.appendChild(timeArrow);
       timeCard.appendChild(timeHead);
+
       var timeBody = el('div', 'overflow:hidden;max-height:0;transition:max-height 0.25s ease;padding:0 14px;');
       listKeys.forEach(function(list) {
         var color = colorMap[list];
@@ -262,11 +264,13 @@
         var track = el('div', 'height:6px;background:#dfe1e6;border-radius:6px;overflow:hidden;');
         var fill  = el('div', 'height:100%;background:' + color + ';width:' + pct + '%;border-radius:6px;');
         track.appendChild(fill);
+        row.appendChild(meta);
+        row.appendChild(track);
         timeBody.appendChild(row);
-        timeCard.appendChild(row);
       });
-      wrap.appendChild(timeCard);
       timeCard.appendChild(timeBody);
+      wrap.appendChild(timeCard);
+
       var timeOpen = false;
       timeHead.addEventListener('click', function() {
         timeOpen = !timeOpen;
@@ -283,6 +287,7 @@
       });
     }
 
+    // Card History - collapsible
     if (timeline.length) {
       var histCard = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;overflow:hidden;');
       var histHead = el('div', 'display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;user-select:none;');
