@@ -132,6 +132,7 @@
       return fetch(
         'https://api.trello.com/1/cards/' + card.id +
         '/actions?filter=updateCard:idList,createCard,commentCard,addMemberToCard' +
+        '&memberCreator=true&memberCreator_fields=fullName,username' +
         '&key=' + API_KEY + '&token=' + token
       )
       .then(function(r) { return r.json(); })
