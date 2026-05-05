@@ -193,7 +193,7 @@
 
     var root = document.getElementById('root');
     root.innerHTML = '';
-    var wrap = el('div', 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;flex-direction:column;gap:6px;padding:2px');
+    var wrap = el('div', 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;flex-direction:column;gap:6px;padding:2px 2px 40px 2px');
 
     if (isDone) {
       var banner = el('div', 'background:#e3fcef;border:1px solid #abf5d1;border-radius:8px;padding:10px 14px;font-size:12px;color:#006644;font-weight:500;');
