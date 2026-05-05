@@ -12,7 +12,6 @@
       timePerList: 'Time Per List', cardHistory: 'Card History',
       noData: 'No action data found for this card.',
       noChanges: 'No list changes yet.',
-      couldNotLoad: 'Could not load data. Please refresh.',
       connectBtn: 'Connect Trello Account',
       connectMsg: 'Connect your Trello account to see card timing data.',
       doneBanner: '✓ This card is in a Done list — timers are frozen.',
@@ -26,7 +25,6 @@
       timePerList: 'Liste Bazlı Süre', cardHistory: 'Kart Geçmişi',
       noData: 'Bu kart için veri bulunamadı.',
       noChanges: 'Henüz liste değişimi yok.',
-      couldNotLoad: 'Veri yüklenemedi. Lütfen sayfayı yenileyin.',
       connectBtn: 'Trello Hesabını Bağla',
       connectMsg: 'Kart verilerini görmek için Trello hesabınızı bağlayın.',
       doneBanner: '✓ Bu kart Tamamlandı listesinde — süreler donduruldu.',
@@ -40,7 +38,6 @@
       timePerList: 'Tiempo por Lista', cardHistory: 'Historial',
       noData: 'No se encontraron datos para esta tarjeta.',
       noChanges: 'Sin cambios de lista aún.',
-      couldNotLoad: 'No se pudieron cargar los datos. Actualiza la página.',
       connectBtn: 'Conectar Cuenta de Trello',
       connectMsg: 'Conecta tu cuenta de Trello para ver los datos de tiempo.',
       doneBanner: '✓ Esta tarjeta está en una lista Done — los temporizadores están congelados.',
@@ -54,7 +51,6 @@
       timePerList: 'Tempo por Lista', cardHistory: 'Histórico',
       noData: 'Nenhum dado encontrado para este cartão.',
       noChanges: 'Sem alterações de lista ainda.',
-      couldNotLoad: 'Não foi possível carregar os dados. Atualize a página.',
       connectBtn: 'Conectar Conta Trello',
       connectMsg: 'Conecte sua conta Trello para ver os dados de tempo.',
       doneBanner: '✓ Este cartão está em uma lista Done — os temporizadores estão congelados.',
@@ -69,8 +65,7 @@
     return t.get('board', 'shared', 'language')
       .then(function(lang) {
         var L = STRINGS[lang] || STRINGS['en'];
-        var restApi = t.getRestApi();
-        return restApi.getToken()
+        return t.getRestApi().getToken()
           .then(function(token) {
             if (!token) return showAuth(L);
             return loadCard(token, L);
@@ -79,8 +74,7 @@
       })
       .catch(function() {
         var L = STRINGS['en'];
-        var restApi = t.getRestApi();
-        return restApi.getToken()
+        return t.getRestApi().getToken()
           .then(function(token) {
             if (!token) return showAuth(L);
             return loadCard(token, L);
@@ -193,164 +187,144 @@
 
     var root = document.getElementById('root');
     root.innerHTML = '';
-    var wrap = el('div', 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;flex-direction:column;gap:6px;padding:2px 2px 40px 2px');
+
+    var stageColor = isDone ? '#5e6c84' : '#2ea043';
+
+    var wrap = el('div', 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:2px');
+
+    /* ---- LEFT PANEL ---- */
+    var left = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:0;');
 
     if (isDone) {
-      var banner = el('div', 'background:#e3fcef;border:1px solid #abf5d1;border-radius:8px;padding:10px 14px;font-size:12px;color:#006644;font-weight:500;');
+      var banner = el('div', 'background:#e3fcef;border:1px solid #abf5d1;border-radius:6px;padding:6px 10px;font-size:11px;color:#006644;font-weight:500;margin-bottom:10px;');
       banner.innerText = L.doneBanner;
-      wrap.appendChild(banner);
+      left.appendChild(banner);
     }
 
-    var row1 = el('div', 'display:grid;grid-template-columns:1fr 1fr;gap:6px;');
-    var stageColor = isDone ? '#5e6c84' : '#2ea043';
-    row1.appendChild(infoCard(
-      '⏱', L.currentStage,
-      '<div style="font-size:11px;font-weight:600;color:#172b4d;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(currentList) + '</div>' +
-      '<div style="font-size:14px;font-weight:700;color:' + stageColor + ';line-height:1.2">' + formatTime(currentStageTime) + '</div>'
-    ));
-    row1.appendChild(infoCard(
-      '📊', L.cardAge,
-      '<div style="font-size:11px;font-weight:600;color:#172b4d;margin-bottom:1px">' + L.sinceCreation + '</div>' +
-      '<div style="font-size:14px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>'
-    ));
-    wrap.appendChild(row1);
-
-    if (mostActive || createdBy) {
-      var row2 = el('div', 'display:grid;grid-template-columns:1fr 1fr;gap:6px;');
-      if (mostActive) {
-        row2.appendChild(infoCard(
-          '👤', L.mostActive,
-          '<div style="font-size:12px;font-weight:600;color:#172b4d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(mostActive) +
-          ' <span style="color:#5e6c84;font-weight:400;font-size:11px">(' + mostActiveCount + ')</span></div>'
-        ));
-      }
-      if (createdBy) {
-        row2.appendChild(infoCard(
-          '⭐', L.createdBy,
-          '<div style="font-size:12px;font-weight:600;color:#172b4d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(createdBy) + '</div>'
-        ));
-      }
-      wrap.appendChild(row2);
+    function leftRow(icon, label, valueHTML, isLast) {
+      var row = el('div', (isLast ? '' : 'margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #dfe1e6;'));
+      var lbl = el('div', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px;');
+      lbl.innerHTML = icon + ' ' + label;
+      var val = el('div', '');
+      val.innerHTML = valueHTML;
+      row.appendChild(lbl);
+      row.appendChild(val);
+      return row;
     }
 
-    // Time Per List - collapsible
+    left.appendChild(leftRow('⏱', L.currentStage,
+      '<div style="font-size:12px;font-weight:600;color:#172b4d;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(currentList) + '</div>' +
+      '<div style="font-size:18px;font-weight:700;color:' + stageColor + ';line-height:1.2">' + formatTime(currentStageTime) + '</div>'
+    , false));
+
+    left.appendChild(leftRow('📊', L.cardAge,
+      '<div style="font-size:12px;font-weight:600;color:#172b4d;margin-bottom:1px">' + L.sinceCreation + '</div>' +
+      '<div style="font-size:18px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>'
+    , !mostActive && !createdBy));
+
+    if (mostActive) {
+      left.appendChild(leftRow('👤', L.mostActive,
+        '<div style="font-size:13px;font-weight:600;color:#172b4d">' + escHtml(mostActive) +
+        ' <span style="color:#5e6c84;font-weight:400;font-size:11px">(' + mostActiveCount + ')</span></div>'
+      , !createdBy));
+    }
+
+    if (createdBy) {
+      left.appendChild(leftRow('⭐', L.createdBy,
+        '<div style="font-size:13px;font-weight:600;color:#172b4d">' + escHtml(createdBy) + '</div>'
+      , true));
+    }
+
+    /* ---- RIGHT PANEL ---- */
+    var right = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:0;');
+
+    // Time Per List
     if (timeline.length && listKeys.length) {
-      var timeCard = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;overflow:hidden;');
-      var timeHead = el('div', 'display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;user-select:none;');
-      var timeLbl  = el('span', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;');
-      timeLbl.innerText = '📋 ' + L.timePerList;
-      var timeArrow = el('span', 'font-size:9px;color:#5e6c84;transition:transform 0.2s;');
-      timeArrow.innerText = '▶';
-      timeHead.appendChild(timeLbl);
-      timeHead.appendChild(timeArrow);
-      timeCard.appendChild(timeHead);
+      var tTitle = el('div', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;');
+      tTitle.innerText = '📋 ' + L.timePerList;
+      right.appendChild(tTitle);
 
-      var timeBody = el('div', 'overflow:hidden;max-height:0;transition:max-height 0.25s ease;padding:0 14px;');
       listKeys.forEach(function(list) {
         var color = colorMap[list];
         var pct   = grandTotal > 0 ? (totals[list] / grandTotal * 100) : 0;
-        var row = el('div', 'margin-bottom:10px;');
-        var meta = el('div', 'display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;');
-        var nameEl = el('span', 'font-size:12px;font-weight:500;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%;');
+        var row = el('div', 'margin-bottom:8px;');
+        var meta = el('div', 'display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;');
+        var nameEl = el('span', 'font-size:11px;font-weight:500;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:50%;');
         nameEl.innerText = list;
-        var right = el('div', 'display:flex;gap:8px;align-items:center;flex-shrink:0;');
-        var pctEl = el('span', 'font-size:11px;font-weight:700;color:' + color + ';min-width:32px;text-align:right;');
+        var right2 = el('div', 'display:flex;gap:6px;align-items:center;flex-shrink:0;');
+        var pctEl = el('span', 'font-size:11px;font-weight:700;color:' + color + ';');
         pctEl.innerText = Math.round(pct) + '%';
-        var timeEl = el('span', 'font-size:11px;color:#5e6c84;white-space:nowrap;');
+        var timeEl = el('span', 'font-size:10px;color:#5e6c84;white-space:nowrap;');
         timeEl.innerText = formatTime(totals[list]);
-        right.appendChild(pctEl);
-        right.appendChild(timeEl);
+        right2.appendChild(pctEl);
+        right2.appendChild(timeEl);
         meta.appendChild(nameEl);
-        meta.appendChild(right);
-        var track = el('div', 'height:6px;background:#dfe1e6;border-radius:6px;overflow:hidden;');
+        meta.appendChild(right2);
+        var track = el('div', 'height:5px;background:#dfe1e6;border-radius:6px;overflow:hidden;');
         var fill  = el('div', 'height:100%;background:' + color + ';width:' + pct + '%;border-radius:6px;');
         track.appendChild(fill);
         row.appendChild(meta);
         row.appendChild(track);
-        timeBody.appendChild(row);
-      });
-      timeCard.appendChild(timeBody);
-      wrap.appendChild(timeCard);
-
-      var timeOpen = false;
-      timeHead.addEventListener('click', function() {
-        timeOpen = !timeOpen;
-        if (timeOpen) {
-          timeBody.style.maxHeight = timeBody.scrollHeight + 'px';
-          timeBody.style.paddingBottom = '12px';
-          timeArrow.style.transform = 'rotate(90deg)';
-        } else {
-          timeBody.style.maxHeight = '0';
-          timeBody.style.paddingBottom = '0';
-          timeArrow.style.transform = 'rotate(0deg)';
-        }
-        setTimeout(function(){ t.sizeTo('#root'); }, 300);
+        right.appendChild(row);
       });
     }
 
-    // Card History - collapsible
-    if (timeline.length) {
-      var histCard = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;overflow:hidden;');
-      var histHead = el('div', 'display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;user-select:none;');
-      var histLbl  = el('span', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;');
-      histLbl.innerText = '≡ ' + L.cardHistory;
-      var arrow = el('span', 'font-size:9px;color:#5e6c84;transition:transform 0.2s;');
-      arrow.innerText = '▶';
-      histHead.appendChild(histLbl);
-      histHead.appendChild(arrow);
-      var histBody = el('div', 'overflow:hidden;max-height:0;transition:max-height 0.25s ease;padding:0 14px;');
-      timeline.forEach(function(item, idx) {
-        var color  = colorMap[item.list] || COLORS[0];
-        var isLast = idx === timeline.length - 1;
-        var row    = el('div', 'display:flex;gap:8px;padding-bottom:10px;');
-        var lineCol = el('div', 'display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:10px;');
-        var dot  = el('div', 'width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0;margin-top:2px;');
-        var line = el('div', 'width:2px;flex:1;background:' + (isLast ? 'transparent' : '#dfe1e6') + ';margin-top:3px;');
-        lineCol.appendChild(dot);
-        lineCol.appendChild(line);
-        var content = el('div', 'flex:1;min-width:0;');
-        var listName = el('div', 'font-size:12px;font-weight:600;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;');
-        listName.innerText = item.list;
-        var meta = el('div', 'font-size:10px;color:#5e6c84;margin-top:2px;');
-        meta.innerText = (item.date ? formatDate(item.date) + ' · ' : '') + formatTime(item.duration);
-        content.appendChild(listName);
-        content.appendChild(meta);
-        row.appendChild(lineCol);
-        row.appendChild(content);
-        histBody.appendChild(row);
-      });
-      var open = false;
-      histHead.addEventListener('click', function() {
-        open = !open;
-        if (open) {
-          histBody.style.maxHeight = histBody.scrollHeight + 'px';
-          histBody.style.paddingBottom = '12px';
-          arrow.style.transform = 'rotate(90deg)';
-        } else {
-          histBody.style.maxHeight = '0';
-          histBody.style.paddingBottom = '0';
-          arrow.style.transform = 'rotate(0deg)';
-        }
-        setTimeout(function(){ t.sizeTo('#root'); }, 300);
-      });
-      histCard.appendChild(histHead);
-      histCard.appendChild(histBody);
-      wrap.appendChild(histCard);
-    }
+    // Divider
+    var divider = el('div', 'border-top:1px solid #dfe1e6;margin:8px 0;');
+    right.appendChild(divider);
 
+    // Card History collapsible
+    var histHead = el('div', 'display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;');
+    var histLbl  = el('span', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;');
+    histLbl.innerText = '≡ ' + L.cardHistory;
+    var arrow = el('span', 'font-size:9px;color:#5e6c84;transition:transform 0.2s;');
+    arrow.innerText = '▶';
+    histHead.appendChild(histLbl);
+    histHead.appendChild(arrow);
+    right.appendChild(histHead);
+
+    var histBody = el('div', 'overflow:hidden;max-height:0;transition:max-height 0.25s ease;margin-top:0;');
+    timeline.forEach(function(item, idx) {
+      var color  = colorMap[item.list] || COLORS[0];
+      var isLast = idx === timeline.length - 1;
+      var row    = el('div', 'display:flex;gap:6px;padding-top:8px;');
+      var lineCol = el('div', 'display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:10px;');
+      var dot  = el('div', 'width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0;margin-top:2px;');
+      var line = el('div', 'width:2px;flex:1;background:' + (isLast ? 'transparent' : '#dfe1e6') + ';margin-top:3px;');
+      lineCol.appendChild(dot);
+      lineCol.appendChild(line);
+      var content = el('div', 'flex:1;min-width:0;');
+      var listName = el('div', 'font-size:11px;font-weight:600;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;');
+      listName.innerText = item.list;
+      var meta = el('div', 'font-size:10px;color:#5e6c84;margin-top:1px;');
+      meta.innerText = (item.date ? formatDate(item.date) + ' · ' : '') + formatTime(item.duration);
+      content.appendChild(listName);
+      content.appendChild(meta);
+      row.appendChild(lineCol);
+      row.appendChild(content);
+      histBody.appendChild(row);
+    });
+    right.appendChild(histBody);
+
+    var open = false;
+    histHead.addEventListener('click', function() {
+      open = !open;
+      if (open) {
+        histBody.style.maxHeight = histBody.scrollHeight + 'px';
+        histBody.style.marginTop = '6px';
+        arrow.style.transform = 'rotate(90deg)';
+      } else {
+        histBody.style.maxHeight = '0';
+        histBody.style.marginTop = '0';
+        arrow.style.transform = 'rotate(0deg)';
+      }
+      setTimeout(function(){ t.sizeTo('#root'); }, 300);
+    });
+
+    wrap.appendChild(left);
+    wrap.appendChild(right);
     root.appendChild(wrap);
     t.sizeTo('#root');
-  }
-
-  function infoCard(icon, label, valueHTML) {
-    var card = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:8px 10px;');
-    var lbl  = el('div', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;display:flex;align-items:center;gap:4px;');
-    lbl.innerHTML = icon + ' ' + label;
-    card.appendChild(lbl);
-    var val = el('div', '');
-    val.innerHTML = valueHTML;
-    card.appendChild(val);
-    return card;
   }
 
   function el(tag, css) {
@@ -365,9 +339,9 @@
     var days    = Math.floor(hours / 24);
     var rest    = hours % 24;
     if (minutes < 60) return minutes + ' minutes';
-    if (days > 0 && rest > 0) return days + ' days ' + rest + ' hours';
+    if (days > 0 && rest > 0) return days + ' days ' + rest + 'h';
     if (days > 0) return days + ' days';
-    return hours + ' hours';
+    return hours + 'h';
   }
 
   function formatDate(d) {
