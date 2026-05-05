@@ -68,7 +68,7 @@ TrelloPowerUp.initialize({
   'board-buttons': function(t, options) {
     return [{
       text: 'Time in List',
-      icon: 'https://trello-time-in-list.vercel.app/icon.png',
+      icon: 'https://trello-time-in-list.vercel.app/icon.svg',
       condition: 'admin',
       callback: function(t) {
         return t.modal({
