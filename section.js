@@ -190,7 +190,7 @@
 
     var stageColor = isDone ? '#5e6c84' : '#2ea043';
 
-    var wrap = el('div', 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:2px');
+    var wrap = el('div', 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:2px 2px 48px 2px');
 
     /* ---- LEFT PANEL ---- */
     var left = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:0;');
@@ -218,7 +218,6 @@
     , false));
 
     left.appendChild(leftRow('📊', L.cardAge,
-      '<div style="font-size:12px;font-weight:600;color:#172b4d;margin-bottom:1px">' + L.sinceCreation + '</div>' +
       '<div style="font-size:18px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>'
     , !mostActive && !createdBy));
 
