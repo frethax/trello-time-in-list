@@ -192,7 +192,7 @@
 
     var root = document.getElementById('root');
     root.innerHTML = '';
-    var wrap = el('div', 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;flex-direction:column;gap:8px;padding:2px');
+    var wrap = el('div', 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;flex-direction:column;gap:6px;padding:2px');
 
     if (isDone) {
       var banner = el('div', 'background:#e3fcef;border:1px solid #abf5d1;border-radius:8px;padding:10px 14px;font-size:12px;color:#006644;font-weight:500;');
@@ -200,21 +200,37 @@
       wrap.appendChild(banner);
     }
 
-    var row1 = el('div', 'display:grid;grid-template-columns:1fr 1fr;gap:8px;');
+    var row1 = el('div', 'display:grid;grid-template-columns:1fr 1fr;gap:6px;');
     var stageColor = isDone ? '#5e6c84' : '#2ea043';
     row1.appendChild(infoCard(
       '⏱', L.currentStage,
-      '<div style="font-size:12px;font-weight:600;color:#172b4d;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(currentList) + '</div>' +
-      '<div style="font-size:15px;font-weight:700;color:' + stageColor + ';line-height:1.2;margin-bottom:6px">' + formatTime(currentStageTime) + '</div>' +
-      (mostActive ? '<div style="font-size:10px;color:#5e6c84;text-transform:uppercase;font-weight:600;letter-spacing:0.4px;margin-bottom:2px">👤 ' + L.mostActive + '</div><div style="font-size:12px;font-weight:600;color:#172b4d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(mostActive) + ' <span style="color:#5e6c84;font-weight:400">(' + mostActiveCount + ')</span></div>' : '')
+      '<div style="font-size:11px;font-weight:600;color:#172b4d;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(currentList) + '</div>' +
+      '<div style="font-size:14px;font-weight:700;color:' + stageColor + ';line-height:1.2">' + formatTime(currentStageTime) + '</div>'
     ));
     row1.appendChild(infoCard(
       '📊', L.cardAge,
-      '<div style="font-size:12px;font-weight:600;color:#172b4d;margin-bottom:2px">' + L.sinceCreation + '</div>' +
-      '<div style="font-size:15px;font-weight:700;color:#0052cc;line-height:1.2;margin-bottom:6px">' + formatTime(totalTime) + '</div>' +
-      (createdBy ? '<div style="font-size:10px;color:#5e6c84;text-transform:uppercase;font-weight:600;letter-spacing:0.4px;margin-bottom:2px">⭐ ' + L.createdBy + '</div><div style="font-size:12px;font-weight:600;color:#172b4d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(createdBy) + '</div>' : '')
+      '<div style="font-size:11px;font-weight:600;color:#172b4d;margin-bottom:1px">' + L.sinceCreation + '</div>' +
+      '<div style="font-size:14px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>'
     ));
     wrap.appendChild(row1);
+
+    if (mostActive || createdBy) {
+      var row2 = el('div', 'display:grid;grid-template-columns:1fr 1fr;gap:6px;');
+      if (mostActive) {
+        row2.appendChild(infoCard(
+          '👤', L.mostActive,
+          '<div style="font-size:12px;font-weight:600;color:#172b4d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(mostActive) +
+          ' <span style="color:#5e6c84;font-weight:400;font-size:11px">(' + mostActiveCount + ')</span></div>'
+        ));
+      }
+      if (createdBy) {
+        row2.appendChild(infoCard(
+          '⭐', L.createdBy,
+          '<div style="font-size:12px;font-weight:600;color:#172b4d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(createdBy) + '</div>'
+        ));
+      }
+      wrap.appendChild(row2);
+    }
 
     // Time Per List - collapsible
     if (timeline.length && listKeys.length) {
@@ -326,7 +342,7 @@
   }
 
   function infoCard(icon, label, valueHTML) {
-    var card = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;');
+    var card = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:8px 10px;');
     var lbl  = el('div', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;display:flex;align-items:center;gap:4px;');
     lbl.innerHTML = icon + ' ' + label;
     card.appendChild(lbl);
