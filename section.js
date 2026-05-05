@@ -156,6 +156,9 @@
     if (createAction && createAction.memberCreator) {
       createdBy = createAction.memberCreator.fullName || createAction.memberCreator.username || '';
     }
+    if (!createdBy && ordered[0] && ordered[0].memberCreator) {
+      createdBy = ordered[0].memberCreator.fullName || ordered[0].memberCreator.username || '';
+    }
 
     var activityCount = {};
     ordered.forEach(function(a) {
@@ -324,10 +327,10 @@
     var hours   = Math.floor(ms / (1000 * 60 * 60));
     var days    = Math.floor(hours / 24);
     var rest    = hours % 24;
-    if (minutes < 60) return minutes + ' min';
-    if (days > 0 && rest > 0) return days + 'd ' + rest + 'h';
+    if (minutes < 60) return minutes + ' minutes';
+    if (days > 0 && rest > 0) return days + ' days ' + rest + ' hours';
     if (days > 0) return days + ' days';
-    return hours + 'h';
+    return hours + ' hours';
   }
 
   function formatDate(d) {
