@@ -4,10 +4,58 @@ var API_KEY = '526d48a7eb9050082ce280fe0ac1a67f';
 var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'Time in List' });
 
 var STRINGS = {
-  en: { langTitle:'Language', listsTitle:'List Settings', days:'days', doneLabel:'✓ Done', ignoreLabel:'⊘ Ignore', save:'Save Settings', loading:'Loading...', error:'Could not load lists. Please reconnect your account.' },
-  tr: { langTitle:'Dil', listsTitle:'Liste Ayarları', days:'gün', doneLabel:'✓ Tamamlandı', ignoreLabel:'⊘ Yoksay', save:'Kaydet', loading:'Yükleniyor...', error:'Listeler yüklenemedi. Lütfen hesabınızı yeniden bağlayın.' },
-  es: { langTitle:'Idioma', listsTitle:'Configuración de listas', days:'días', doneLabel:'✓ Hecho', ignoreLabel:'⊘ Ignorar', save:'Guardar', loading:'Cargando...', error:'No se pudieron cargar las listas.' },
-  pt: { langTitle:'Idioma', listsTitle:'Configurações de listas', days:'dias', doneLabel:'✓ Concluído', ignoreLabel:'⊘ Ignorar', save:'Salvar', loading:'Carregando...', error:'Não foi possível carregar as listas.' }
+  en: {
+    langTitle:   'Language',
+    listsTitle:  'List Settings',
+    days:        'days',
+    doneLabel:   '✓ Done',
+    ignoreLabel: '⊘ Ignore',
+    save:        'Save Settings',
+    loading:     'Loading...',
+    error:       'Could not load lists. Please reconnect your account.',
+    helpFlag:    '🚩 Flag — Cards in this list will turn red after the set number of days.',
+    helpDone:    '✓ Done — Cards moved here stop accumulating time. Their timer freezes.',
+    helpIgnore:  '⊘ Ignore — Cards in this list are hidden from the Time in List panel and badge.'
+  },
+  tr: {
+    langTitle:   'Dil',
+    listsTitle:  'Liste Ayarları',
+    days:        'gün',
+    doneLabel:   '✓ Tamamlandı',
+    ignoreLabel: '⊘ Yoksay',
+    save:        'Kaydet',
+    loading:     'Yükleniyor...',
+    error:       'Listeler yüklenemedi. Lütfen hesabınızı yeniden bağlayın.',
+    helpFlag:    '🚩 İşaretle — Bu listedeki kartlar belirlenen gün sayısını aşınca kırmızıya döner.',
+    helpDone:    '✓ Tamamlandı — Buraya taşınan kartların süresi dondurulur. Sayaç durur.',
+    helpIgnore:  '⊘ Yoksay — Bu listedeki kartlar Time in List panelinde ve badge\'de gösterilmez.'
+  },
+  es: {
+    langTitle:   'Idioma',
+    listsTitle:  'Configuración de listas',
+    days:        'días',
+    doneLabel:   '✓ Hecho',
+    ignoreLabel: '⊘ Ignorar',
+    save:        'Guardar',
+    loading:     'Cargando...',
+    error:       'No se pudieron cargar las listas.',
+    helpFlag:    '🚩 Marcar — Las tarjetas en esta lista se volverán rojas después del número de días establecido.',
+    helpDone:    '✓ Hecho — Las tarjetas movidas aquí dejan de acumular tiempo. El temporizador se congela.',
+    helpIgnore:  '⊘ Ignorar — Las tarjetas en esta lista se ocultan del panel y la insignia de Time in List.'
+  },
+  pt: {
+    langTitle:   'Idioma',
+    listsTitle:  'Configurações de listas',
+    days:        'dias',
+    doneLabel:   '✓ Concluído',
+    ignoreLabel: '⊘ Ignorar',
+    save:        'Salvar',
+    loading:     'Carregando...',
+    error:       'Não foi possível carregar as listas.',
+    helpFlag:    '🚩 Sinalizar — Os cartões nesta lista ficarão vermelhos após o número de dias definido.',
+    helpDone:    '✓ Concluído — Os cartões movidos aqui param de acumular tempo. O cronômetro congela.',
+    helpIgnore:  '⊘ Ignorar — Os cartões nesta lista ficam ocultos do painel e do badge do Time in List.'
+  }
 };
 
 var LANGS = [
@@ -40,6 +88,9 @@ function applyStrings() {
   var s = STRINGS[currentLang];
   document.getElementById('lang-title').innerText  = s.langTitle;
   document.getElementById('lists-title').innerText = s.listsTitle;
+  document.getElementById('help-flag').innerText   = s.helpFlag;
+  document.getElementById('help-done').innerText   = s.helpDone;
+  document.getElementById('help-ignore').innerText = s.helpIgnore;
   var saveBtn = document.getElementById('save');
   if (saveBtn) saveBtn.innerText = s.save;
 }
@@ -87,7 +138,6 @@ function renderLists() {
     var controls = document.createElement('div');
     controls.className = 'item-controls';
 
-    // Flag pill
     var pill = document.createElement('div');
     pill.className = 'flag-pill' + (saved.threshold ? ' active' : '');
     var flagIcon = document.createElement('span');
@@ -108,27 +158,22 @@ function renderLists() {
     pill.appendChild(input);
     pill.appendChild(daysLbl);
 
-    // Separator
     var sep1 = document.createElement('div');
     sep1.className = 'separator';
 
-    // Done
     var doneLbl = document.createElement('span');
     doneLbl.className = 'control-label';
     doneLbl.innerText = s.doneLabel;
     var doneToggle = makeToggle(saved.done || false, list.name, 'done-checkbox');
 
-    // Separator
     var sep2 = document.createElement('div');
     sep2.className = 'separator';
 
-    // Ignore
     var ignoreLbl = document.createElement('span');
     ignoreLbl.className = 'control-label';
     ignoreLbl.innerText = s.ignoreLabel;
     var ignoreToggle = makeToggle(saved.ignore || false, list.name, 'ignore-checkbox');
 
-    // When ignore toggled, dim the row
     ignoreToggle.querySelector('input').addEventListener('change', function() {
       item.className = 'list-item' + (this.checked ? ' ignored' : '');
     });
