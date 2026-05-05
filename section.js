@@ -6,12 +6,10 @@
 
   var STRINGS = {
     en: {
-      sinceCreation: 'Since Creation',
       currentStage: 'Current Stage', cardAge: 'Card Age',
       mostActive: 'Most Active', createdBy: 'Created By',
       timePerList: 'Time Per List', cardHistory: 'Card History',
       noData: 'No action data found for this card.',
-      noChanges: 'No list changes yet.',
       connectBtn: 'Connect Trello Account',
       connectMsg: 'Connect your Trello account to see card timing data.',
       doneBanner: '✓ This card is in a Done list — timers are frozen.',
@@ -19,12 +17,10 @@
       unknown: 'Unknown'
     },
     tr: {
-      sinceCreation: 'Oluşturulmasından Bu Yana',
       currentStage: 'Mevcut Aşama', cardAge: 'Kart Yaşı',
       mostActive: 'En Aktif', createdBy: 'Kartı Açan',
       timePerList: 'Liste Bazlı Süre', cardHistory: 'Kart Geçmişi',
       noData: 'Bu kart için veri bulunamadı.',
-      noChanges: 'Henüz liste değişimi yok.',
       connectBtn: 'Trello Hesabını Bağla',
       connectMsg: 'Kart verilerini görmek için Trello hesabınızı bağlayın.',
       doneBanner: '✓ Bu kart Tamamlandı listesinde — süreler donduruldu.',
@@ -32,12 +28,10 @@
       unknown: 'Bilinmiyor'
     },
     es: {
-      sinceCreation: 'Desde la Creación',
       currentStage: 'Etapa Actual', cardAge: 'Edad de la Tarjeta',
       mostActive: 'Más Activo', createdBy: 'Creado Por',
       timePerList: 'Tiempo por Lista', cardHistory: 'Historial',
       noData: 'No se encontraron datos para esta tarjeta.',
-      noChanges: 'Sin cambios de lista aún.',
       connectBtn: 'Conectar Cuenta de Trello',
       connectMsg: 'Conecta tu cuenta de Trello para ver los datos de tiempo.',
       doneBanner: '✓ Esta tarjeta está en una lista Done — los temporizadores están congelados.',
@@ -45,12 +39,10 @@
       unknown: 'Desconocido'
     },
     pt: {
-      sinceCreation: 'Desde a Criação',
       currentStage: 'Etapa Atual', cardAge: 'Idade do Cartão',
       mostActive: 'Mais Ativo', createdBy: 'Criado Por',
       timePerList: 'Tempo por Lista', cardHistory: 'Histórico',
       noData: 'Nenhum dado encontrado para este cartão.',
-      noChanges: 'Sem alterações de lista ainda.',
       connectBtn: 'Conectar Conta Trello',
       connectMsg: 'Conecte sua conta Trello para ver os dados de tempo.',
       doneBanner: '✓ Este cartão está em uma lista Done — os temporizadores estão congelados.',
@@ -187,24 +179,22 @@
 
     var root = document.getElementById('root');
     root.innerHTML = '';
-
     var stageColor = isDone ? '#5e6c84' : '#2ea043';
-
     var wrap = el('div', 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:2px 2px 48px 2px');
 
     /* ---- LEFT PANEL ---- */
-    var left = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:0;');
+    var left = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:12px;display:flex;flex-direction:column;');
 
     if (isDone) {
-      var banner = el('div', 'background:#e3fcef;border:1px solid #abf5d1;border-radius:6px;padding:6px 10px;font-size:11px;color:#006644;font-weight:500;margin-bottom:10px;');
+      var banner = el('div', 'background:#e3fcef;border:1px solid #abf5d1;border-radius:6px;padding:6px 10px;font-size:11px;color:#006644;font-weight:500;margin-bottom:8px;');
       banner.innerText = L.doneBanner;
       left.appendChild(banner);
     }
 
     function leftRow(icon, label, valueHTML, isLast) {
-      var row = el('div', (isLast ? '' : 'margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #dfe1e6;'));
-      var lbl = el('div', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px;');
-      lbl.innerHTML = icon + ' ' + label;
+      var row = el('div', isLast ? '' : 'margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #dfe1e6;');
+      var lbl = el('div', 'font-size:9px;font-weight:700;color:#97a0af;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px;');
+      lbl.innerText = label;
       var val = el('div', '');
       val.innerHTML = valueHTML;
       row.appendChild(lbl);
@@ -213,54 +203,53 @@
     }
 
     left.appendChild(leftRow('⏱', L.currentStage,
-      '<div style="font-size:12px;font-weight:600;color:#172b4d;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(currentList) + '</div>' +
-      '<div style="font-size:18px;font-weight:700;color:' + stageColor + ';line-height:1.2">' + formatTime(currentStageTime) + '</div>'
+      '<div style="font-size:11px;font-weight:500;color:#5e6c84;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(currentList) + '</div>' +
+      '<div style="font-size:16px;font-weight:700;color:' + stageColor + ';line-height:1.3">' + formatTime(currentStageTime) + '</div>'
     , false));
 
     left.appendChild(leftRow('📊', L.cardAge,
-      '<div style="font-size:18px;font-weight:700;color:#0052cc;line-height:1.2">' + formatTime(totalTime) + '</div>'
+      '<div style="font-size:16px;font-weight:700;color:#0052cc;line-height:1.3">' + formatTime(totalTime) + '</div>'
     , !mostActive && !createdBy));
 
     if (mostActive) {
       left.appendChild(leftRow('👤', L.mostActive,
-        '<div style="font-size:13px;font-weight:600;color:#172b4d">' + escHtml(mostActive) +
-        ' <span style="color:#5e6c84;font-weight:400;font-size:11px">(' + mostActiveCount + ')</span></div>'
+        '<div style="font-size:12px;font-weight:600;color:#172b4d">' + escHtml(mostActive) +
+        ' <span style="color:#97a0af;font-weight:400;font-size:11px">(' + mostActiveCount + ')</span></div>'
       , !createdBy));
     }
 
     if (createdBy) {
       left.appendChild(leftRow('⭐', L.createdBy,
-        '<div style="font-size:13px;font-weight:600;color:#172b4d">' + escHtml(createdBy) + '</div>'
+        '<div style="font-size:12px;font-weight:600;color:#172b4d">' + escHtml(createdBy) + '</div>'
       , true));
     }
 
     /* ---- RIGHT PANEL ---- */
-    var right = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:0;');
+    var right = el('div', 'background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:12px;display:flex;flex-direction:column;');
 
-    // Time Per List
     if (timeline.length && listKeys.length) {
-      var tTitle = el('div', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;');
-      tTitle.innerText = '📋 ' + L.timePerList;
+      var tTitle = el('div', 'font-size:9px;font-weight:700;color:#97a0af;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;');
+      tTitle.innerText = L.timePerList;
       right.appendChild(tTitle);
 
       listKeys.forEach(function(list) {
         var color = colorMap[list];
         var pct   = grandTotal > 0 ? (totals[list] / grandTotal * 100) : 0;
-        var row = el('div', 'margin-bottom:8px;');
+        var row = el('div', 'margin-bottom:7px;');
         var meta = el('div', 'display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;');
         var nameEl = el('span', 'font-size:11px;font-weight:500;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:50%;');
         nameEl.innerText = list;
-        var right2 = el('div', 'display:flex;gap:6px;align-items:center;flex-shrink:0;');
+        var rightMeta = el('div', 'display:flex;gap:5px;align-items:center;flex-shrink:0;');
         var pctEl = el('span', 'font-size:11px;font-weight:700;color:' + color + ';');
         pctEl.innerText = Math.round(pct) + '%';
-        var timeEl = el('span', 'font-size:10px;color:#5e6c84;white-space:nowrap;');
+        var timeEl = el('span', 'font-size:10px;color:#97a0af;white-space:nowrap;');
         timeEl.innerText = formatTime(totals[list]);
-        right2.appendChild(pctEl);
-        right2.appendChild(timeEl);
+        rightMeta.appendChild(pctEl);
+        rightMeta.appendChild(timeEl);
         meta.appendChild(nameEl);
-        meta.appendChild(right2);
-        var track = el('div', 'height:5px;background:#dfe1e6;border-radius:6px;overflow:hidden;');
-        var fill  = el('div', 'height:100%;background:' + color + ';width:' + pct + '%;border-radius:6px;');
+        meta.appendChild(rightMeta);
+        var track = el('div', 'height:4px;background:#dfe1e6;border-radius:4px;overflow:hidden;');
+        var fill  = el('div', 'height:100%;background:' + color + ';width:' + pct + '%;border-radius:4px;');
         track.appendChild(fill);
         row.appendChild(meta);
         row.appendChild(track);
@@ -268,15 +257,13 @@
       });
     }
 
-    // Divider
     var divider = el('div', 'border-top:1px solid #dfe1e6;margin:8px 0;');
     right.appendChild(divider);
 
-    // Card History collapsible
     var histHead = el('div', 'display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;');
-    var histLbl  = el('span', 'font-size:10px;font-weight:700;color:#5e6c84;text-transform:uppercase;letter-spacing:0.6px;');
-    histLbl.innerText = '≡ ' + L.cardHistory;
-    var arrow = el('span', 'font-size:9px;color:#5e6c84;transition:transform 0.2s;');
+    var histLbl  = el('span', 'font-size:9px;font-weight:700;color:#97a0af;text-transform:uppercase;letter-spacing:0.8px;');
+    histLbl.innerText = L.cardHistory;
+    var arrow = el('span', 'font-size:9px;color:#97a0af;transition:transform 0.2s;');
     arrow.innerText = '▶';
     histHead.appendChild(histLbl);
     histHead.appendChild(arrow);
@@ -286,16 +273,16 @@
     timeline.forEach(function(item, idx) {
       var color  = colorMap[item.list] || COLORS[0];
       var isLast = idx === timeline.length - 1;
-      var row    = el('div', 'display:flex;gap:6px;padding-top:8px;');
+      var row    = el('div', 'display:flex;gap:6px;padding-top:7px;');
       var lineCol = el('div', 'display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:10px;');
-      var dot  = el('div', 'width:8px;height:8px;border-radius:50%;background:' + color + ';flex-shrink:0;margin-top:2px;');
+      var dot  = el('div', 'width:7px;height:7px;border-radius:50%;background:' + color + ';flex-shrink:0;margin-top:2px;');
       var line = el('div', 'width:2px;flex:1;background:' + (isLast ? 'transparent' : '#dfe1e6') + ';margin-top:3px;');
       lineCol.appendChild(dot);
       lineCol.appendChild(line);
       var content = el('div', 'flex:1;min-width:0;');
       var listName = el('div', 'font-size:11px;font-weight:600;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;');
       listName.innerText = item.list;
-      var meta = el('div', 'font-size:10px;color:#5e6c84;margin-top:1px;');
+      var meta = el('div', 'font-size:10px;color:#97a0af;margin-top:1px;');
       meta.innerText = (item.date ? formatDate(item.date) + ' · ' : '') + formatTime(item.duration);
       content.appendChild(listName);
       content.appendChild(meta);
@@ -337,8 +324,8 @@
     var hours   = Math.floor(ms / (1000 * 60 * 60));
     var days    = Math.floor(hours / 24);
     var rest    = hours % 24;
-    if (minutes < 60) return minutes + ' minutes';
-    if (days > 0 && rest > 0) return days + ' days ' + rest + 'h';
+    if (minutes < 60) return minutes + ' min';
+    if (days > 0 && rest > 0) return days + 'd ' + rest + 'h';
     if (days > 0) return days + ' days';
     return hours + 'h';
   }
