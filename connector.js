@@ -11,7 +11,7 @@ TrelloPowerUp.initialize({
       content: {
         type:   'iframe',
         url:    t.signUrl('https://trello-time-in-list.vercel.app/card-section.html'),
-        height: 260
+        height: 400
       }
     };
   },
