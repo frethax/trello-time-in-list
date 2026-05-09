@@ -7,7 +7,7 @@ TrelloPowerUp.initialize({
   'card-back-section': function(t, options) {
     return {
       title: 'Time in List',
-      icon:  'https://trello-time-in-list.vercel.app/icon.png?v=2',
+      icon:  'https://trello-time-in-list.vercel.app/icon.png',
       content: {
         type:   'iframe',
         url:    t.signUrl('https://trello-time-in-list.vercel.app/card-section.html'),
@@ -68,7 +68,7 @@ TrelloPowerUp.initialize({
   'board-buttons': function(t, options) {
     return [{
       text: 'Time in List',
-      icon: 'https://trello-time-in-list.vercel.app/icon.svg',
+      icon: 'https://trello-time-in-list.vercel.app/icon.png',
       condition: 'admin',
       callback: function(t) {
         return t.modal({
@@ -107,7 +107,7 @@ function formatTime(ms) {
   var hours   = Math.floor(ms / (1000 * 60 * 60));
   var days    = Math.floor(hours / 24);
   var rest    = hours % 24;
-  if (minutes < 60) return minutes + ' min';
+  if (minutes < 60) return minutes + ' minutes';
   if (days > 0 && rest > 0) return days + ' days ' + rest + ' hours';
   if (days > 0) return days + ' days';
   return hours + ' hours';
