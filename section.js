@@ -10,6 +10,7 @@
       mostActive: 'Most Active', createdBy: 'Created By',
       timePerList: 'Time Per List', cardHistory: 'Card History',
       noData: 'No action data found for this card.',
+      noChanges: 'No list changes yet.',
       connectBtn: 'Connect Trello Account',
       connectMsg: 'Connect your Trello account to see card timing data.',
       doneBanner: '✓ This card is in a Done list — timers are frozen.',
@@ -21,6 +22,7 @@
       mostActive: 'En Aktif', createdBy: 'Kartı Açan',
       timePerList: 'Liste Bazlı Süre', cardHistory: 'Kart Geçmişi',
       noData: 'Bu kart için veri bulunamadı.',
+      noChanges: 'Henüz liste değişimi yok.',
       connectBtn: 'Trello Hesabını Bağla',
       connectMsg: 'Kart verilerini görmek için Trello hesabınızı bağlayın.',
       doneBanner: '✓ Bu kart Tamamlandı listesinde — süreler donduruldu.',
@@ -32,6 +34,7 @@
       mostActive: 'Más Activo', createdBy: 'Creado Por',
       timePerList: 'Tiempo por Lista', cardHistory: 'Historial',
       noData: 'No se encontraron datos para esta tarjeta.',
+      noChanges: 'Sin cambios de lista aún.',
       connectBtn: 'Conectar Cuenta de Trello',
       connectMsg: 'Conecta tu cuenta de Trello para ver los datos de tiempo.',
       doneBanner: '✓ Esta tarjeta está en una lista Done — los temporizadores están congelados.',
@@ -43,6 +46,7 @@
       mostActive: 'Mais Ativo', createdBy: 'Criado Por',
       timePerList: 'Tempo por Lista', cardHistory: 'Histórico',
       noData: 'Nenhum dado encontrado para este cartão.',
+      noChanges: 'Sem alterações de lista ainda.',
       connectBtn: 'Conectar Conta Trello',
       connectMsg: 'Conecte sua conta Trello para ver os dados de tempo.',
       doneBanner: '✓ Este cartão está em uma lista Done — os temporizadores estão congelados.',
@@ -129,12 +133,13 @@
           t.sizeTo('#root');
           return;
         }
-        renderPanel(actions, isDone, L);
+        // Pass currentListName so we can use it as fallback for Unknown
+        renderPanel(actions, isDone, L, currentListName);
       });
     });
   }
 
-  function renderPanel(actions, isDone, L) {
+  function renderPanel(actions, isDone, L, currentListName) {
     var ordered      = actions.slice().reverse();
     var moveActions  = ordered.filter(function(a){ return a.data && a.data.listAfter; });
     var createAction = ordered.find(function(a){ return a.type === 'createCard'; });
@@ -143,10 +148,12 @@
       ? moveActions[moveActions.length - 1]
       : (createAction || ordered[ordered.length - 1]);
 
-    var currentList = (lastMove.data && lastMove.data.listAfter)
+    // Fix Unknown: use currentListName from Trello API as final fallback
+    var currentList = (lastMove && lastMove.data && lastMove.data.listAfter)
       ? lastMove.data.listAfter.name
       : (createAction && createAction.data && createAction.data.list
-        ? createAction.data.list.name : L.unknown);
+        ? createAction.data.list.name
+        : (currentListName || L.unknown));
 
     var frozenAt         = isDone ? new Date(lastMove.date) : new Date();
     var currentStageTime = frozenAt - new Date(lastMove.date);
@@ -258,11 +265,19 @@
         row.appendChild(track);
         right.appendChild(row);
       });
+
+      var divider = el('div', 'border-top:1px solid #dfe1e6;margin:8px 0;');
+      right.appendChild(divider);
+    } else {
+      // No list changes yet — show message
+      var noChanges = el('div', 'font-size:11px;color:#97a0af;margin-bottom:8px;');
+      noChanges.innerText = L.noChanges;
+      right.appendChild(noChanges);
+      var divider2 = el('div', 'border-top:1px solid #dfe1e6;margin:8px 0;');
+      right.appendChild(divider2);
     }
 
-    var divider = el('div', 'border-top:1px solid #dfe1e6;margin:8px 0;');
-    right.appendChild(divider);
-
+    // Card History
     var histHead = el('div', 'display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;');
     var histLbl  = el('span', 'font-size:9px;font-weight:700;color:#97a0af;text-transform:uppercase;letter-spacing:0.8px;');
     histLbl.innerText = L.cardHistory;
@@ -273,26 +288,34 @@
     right.appendChild(histHead);
 
     var histBody = el('div', 'overflow:hidden;max-height:0;transition:max-height 0.25s ease;margin-top:0;');
-    timeline.forEach(function(item, idx) {
-      var color  = colorMap[item.list] || COLORS[0];
-      var isLast = idx === timeline.length - 1;
-      var row    = el('div', 'display:flex;gap:6px;padding-top:7px;');
-      var lineCol = el('div', 'display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:10px;');
-      var dot  = el('div', 'width:7px;height:7px;border-radius:50%;background:' + color + ';flex-shrink:0;margin-top:2px;');
-      var line = el('div', 'width:2px;flex:1;background:' + (isLast ? 'transparent' : '#dfe1e6') + ';margin-top:3px;');
-      lineCol.appendChild(dot);
-      lineCol.appendChild(line);
-      var content = el('div', 'flex:1;min-width:0;');
-      var listName = el('div', 'font-size:11px;font-weight:600;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;');
-      listName.innerText = item.list;
-      var meta = el('div', 'font-size:10px;color:#97a0af;margin-top:1px;');
-      meta.innerText = (item.date ? formatDate(item.date) + ' · ' : '') + formatTime(item.duration);
-      content.appendChild(listName);
-      content.appendChild(meta);
-      row.appendChild(lineCol);
-      row.appendChild(content);
-      histBody.appendChild(row);
-    });
+
+    if (timeline.length) {
+      timeline.forEach(function(item, idx) {
+        var color  = colorMap[item.list] || COLORS[0];
+        var isLast = idx === timeline.length - 1;
+        var row    = el('div', 'display:flex;gap:6px;padding-top:7px;');
+        var lineCol = el('div', 'display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:10px;');
+        var dot  = el('div', 'width:7px;height:7px;border-radius:50%;background:' + color + ';flex-shrink:0;margin-top:2px;');
+        var line = el('div', 'width:2px;flex:1;background:' + (isLast ? 'transparent' : '#dfe1e6') + ';margin-top:3px;');
+        lineCol.appendChild(dot);
+        lineCol.appendChild(line);
+        var content = el('div', 'flex:1;min-width:0;');
+        var listName = el('div', 'font-size:11px;font-weight:600;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;');
+        listName.innerText = item.list;
+        var meta = el('div', 'font-size:10px;color:#97a0af;margin-top:1px;');
+        meta.innerText = (item.date ? formatDate(item.date) + ' · ' : '') + formatTime(item.duration);
+        content.appendChild(listName);
+        content.appendChild(meta);
+        row.appendChild(lineCol);
+        row.appendChild(content);
+        histBody.appendChild(row);
+      });
+    } else {
+      var noHist = el('div', 'font-size:11px;color:#97a0af;padding-top:6px;');
+      noHist.innerText = L.noChanges;
+      histBody.appendChild(noHist);
+    }
+
     right.appendChild(histBody);
 
     var open = false;
