@@ -55,7 +55,7 @@
     }
   };
 
-  var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'Time in List' });
+  var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'ListClock' });
 
   t.render(function() {
     return t.get('board', 'shared', 'language')

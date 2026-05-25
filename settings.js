@@ -1,7 +1,7 @@
-/* ---- settings.js — Time in List configuration ---- */
+/* ---- settings.js — ListClock configuration ---- */
 
 var API_KEY = '526d48a7eb9050082ce280fe0ac1a67f';
-var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'Time in List' });
+var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'ListClock' });
 
 var STRINGS = {
   en: {
@@ -15,7 +15,7 @@ var STRINGS = {
     error:       'Could not load lists. Please reconnect your account.',
     helpFlag:    '🚩 Flag — Cards in this list will turn red after the set number of days.',
     helpDone:    '✓ Done — Cards moved here stop accumulating time. Their timer freezes.',
-    helpIgnore:  '⊘ Ignore — Cards in this list are hidden from the Time in List panel and badge.'
+    helpIgnore:  '⊘ Ignore — Cards in this list are hidden from the ListClock panel and badge.'
   },
   tr: {
     langTitle:   'Dil',
@@ -28,7 +28,7 @@ var STRINGS = {
     error:       'Listeler yüklenemedi. Lütfen hesabınızı yeniden bağlayın.',
     helpFlag:    '🚩 İşaretle — Bu listedeki kartlar belirlenen gün sayısını aşınca kırmızıya döner.',
     helpDone:    '✓ Tamamlandı — Buraya taşınan kartların süresi dondurulur. Sayaç durur.',
-    helpIgnore:  '⊘ Yoksay — Bu listedeki kartlar Time in List panelinde ve badge\'de gösterilmez.'
+    helpIgnore:  '⊘ Yoksay — Bu listedeki kartlar ListClock panelinde ve badge\'de gösterilmez.'
   },
   es: {
     langTitle:   'Idioma',
@@ -41,7 +41,7 @@ var STRINGS = {
     error:       'No se pudieron cargar las listas.',
     helpFlag:    '🚩 Marcar — Las tarjetas en esta lista se volverán rojas después del número de días establecido.',
     helpDone:    '✓ Hecho — Las tarjetas movidas aquí dejan de acumular tiempo. El temporizador se congela.',
-    helpIgnore:  '⊘ Ignorar — Las tarjetas en esta lista se ocultan del panel y la insignia de Time in List.'
+    helpIgnore:  '⊘ Ignorar — Las tarjetas en esta lista se ocultan del panel y la insignia de ListClock.'
   },
   pt: {
     langTitle:   'Idioma',
@@ -54,7 +54,7 @@ var STRINGS = {
     error:       'Não foi possível carregar as listas.',
     helpFlag:    '🚩 Sinalizar — Os cartões nesta lista ficarão vermelhos após o número de dias definido.',
     helpDone:    '✓ Concluído — Os cartões movidos aqui param de acumular tempo. O cronômetro congela.',
-    helpIgnore:  '⊘ Ignorar — Os cartões nesta lista ficam ocultos do painel e do badge do Time in List.'
+    helpIgnore:  '⊘ Ignorar — Os cartões nesta lista ficam ocultos do painel e do badge do ListClock.'
   }
 };
 

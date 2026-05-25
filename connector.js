@@ -1,4 +1,4 @@
-/* ---- Trello Time in List — connector.js ---- */
+/* ---- ListClock — connector.js ---- */
 
 var API_KEY = '526d48a7eb9050082ce280fe0ac1a67f';
 
@@ -6,8 +6,8 @@ TrelloPowerUp.initialize({
 
   'card-back-section': function(t, options) {
     return {
-      title: 'Time in List',
-      icon:  'https://trello-time-in-list.vercel.app/icon.png',
+      title: 'ListClock',
+      icon:  'https://trello-time-in-list.vercel.app/icon.svg',
       content: {
         type:   'iframe',
         url:    t.signUrl('https://trello-time-in-list.vercel.app/card-section.html'),
@@ -67,8 +67,11 @@ TrelloPowerUp.initialize({
 
   'board-buttons': function(t, options) {
     return [{
-      text: 'Time in List',
-      icon: 'https://trello-time-in-list.vercel.app/icon.png',
+      text: 'ListClock',
+      icon: {
+        light: 'https://trello-time-in-list.vercel.app/icon.svg',
+        dark: 'https://trello-time-in-list.vercel.app/icon-white.svg'
+      },
       condition: 'admin',
       callback: function(t) {
         return t.modal({
@@ -76,7 +79,7 @@ TrelloPowerUp.initialize({
           accentColor: '#0052cc',
           height: 600,
           fullscreen: false,
-          title: 'Time in List Settings'
+          title: 'ListClock Settings'
         });
       }
     }];
@@ -84,9 +87,9 @@ TrelloPowerUp.initialize({
 
 }, {
   appKey:        API_KEY,
-  appName:       'Time in List',
+  appName:       'ListClock',
   apiOrigin:     'https://api.trello.com',
-  authorizeName: 'Time in List',
+  authorizeName: 'ListClock',
   authorizeButton: true,
   scope: { read: true }
 });
