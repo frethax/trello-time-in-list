@@ -1,514 +1,169 @@
-/* ---- settings.js — ListClock configuration ---- */
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px; color: #172b4d; background: #f4f5f7; padding: 20px;
+    }
+    .section { margin-bottom: 20px; }
+    .section:last-child { margin-bottom: 0; }
+    .section-title {
+      font-size: 11px; font-weight: 700; color: #5e6c84;
+      text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 10px;
+    }
+    .lang-options { display: flex; gap: 8px; flex-wrap: wrap; }
+    .lang-btn {
+      padding: 7px 14px; border: 2px solid #dfe1e6; border-radius: 8px;
+      background: white; font-size: 13px; font-weight: 600; color: #5e6c84;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .lang-btn:hover { border-color: #0052cc; color: #0052cc; }
+    .lang-btn.active { border-color: #0052cc; color: #0052cc; background: #e8f0ff; }
 
-var API_KEY = '526d48a7eb9050082ce280fe0ac1a67f';
-var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'ListClock' });
-
-var STRINGS = {
-  en: {
-    langTitle:   'Language',
-    listsTitle:  'List Settings',
-    days:        'days',
-    doneLabel:   '✓ Done',
-    ignoreLabel: '⊘ Ignore',
-    save:        'Save Settings',
-    loading:     'Loading...',
-    error:       'Could not load lists. Please reconnect your account.',
-    helpFlag:    '🚩 Flag — Cards in this list will turn red after the set number of days.',
-    helpDone:    '✓ Done — Cards moved here stop accumulating time. Their timer freezes.',
-    helpIgnore:  '⊘ Ignore — Cards in this list are hidden from the ListClock panel and badge.',
-    exportTitle:    'Export Data',
-    exportCsvBtn:   'Download as CSV',
-    exportXlsxBtn:  'Download as Excel',
-    exportFetching: 'Scanning cards...',
-    exportBuilding: 'Preparing file...',
-    exportDone:     '{n} cards exported.',
-    exportEmpty:    'No cards found to export.',
-    exportError:    'Export failed. Please try again.',
-    contactTitle:   'Contact',
-    contactBtn:     'Contact Us'
-  },
-  tr: {
-    langTitle:   'Dil',
-    listsTitle:  'Liste Ayarları',
-    days:        'gün',
-    doneLabel:   '✓ Tamamlandı',
-    ignoreLabel: '⊘ Yoksay',
-    save:        'Kaydet',
-    loading:     'Yükleniyor...',
-    error:       'Listeler yüklenemedi. Lütfen hesabınızı yeniden bağlayın.',
-    helpFlag:    '🚩 İşaretle — Bu listedeki kartlar belirlenen gün sayısını aşınca kırmızıya döner.',
-    helpDone:    '✓ Tamamlandı — Buraya taşınan kartların süresi dondurulur. Sayaç durur.',
-    helpIgnore:  '⊘ Yoksay — Bu listedeki kartlar ListClock panelinde ve badge\'de gösterilmez.',
-    exportTitle:    'Veri Dışa Aktar',
-    exportCsvBtn:   'CSV olarak indir',
-    exportXlsxBtn:  'Excel olarak indir',
-    exportFetching: 'Kartlar taranıyor...',
-    exportBuilding: 'Dosya hazırlanıyor...',
-    exportDone:     '{n} kart dışa aktarıldı.',
-    exportEmpty:    'Dışa aktarılacak kart bulunamadı.',
-    exportError:    'Dışa aktarma başarısız oldu. Lütfen tekrar deneyin.',
-    contactTitle:   'İletişim',
-    contactBtn:     'Bize Ulaşın'
-  },
-  es: {
-    langTitle:   'Idioma',
-    listsTitle:  'Configuración de listas',
-    days:        'días',
-    doneLabel:   '✓ Hecho',
-    ignoreLabel: '⊘ Ignorar',
-    save:        'Guardar',
-    loading:     'Cargando...',
-    error:       'No se pudieron cargar las listas.',
-    helpFlag:    '🚩 Marcar — Las tarjetas en esta lista se volverán rojas después del número de días establecido.',
-    helpDone:    '✓ Hecho — Las tarjetas movidas aquí dejan de acumular tiempo. El temporizador se congela.',
-    helpIgnore:  '⊘ Ignorar — Las tarjetas en esta lista se ocultan del panel y la insignia de ListClock.',
-    exportTitle:    'Exportar Datos',
-    exportCsvBtn:   'Descargar como CSV',
-    exportXlsxBtn:  'Descargar como Excel',
-    exportFetching: 'Escaneando tarjetas...',
-    exportBuilding: 'Preparando archivo...',
-    exportDone:     '{n} tarjetas exportadas.',
-    exportEmpty:    'No se encontraron tarjetas para exportar.',
-    exportError:    'Error al exportar. Inténtalo de nuevo.',
-    contactTitle:   'Contacto',
-    contactBtn:     'Contáctanos'
-  },
-  pt: {
-    langTitle:   'Idioma',
-    listsTitle:  'Configurações de listas',
-    days:        'dias',
-    doneLabel:   '✓ Concluído',
-    ignoreLabel: '⊘ Ignorar',
-    save:        'Salvar',
-    loading:     'Carregando...',
-    error:       'Não foi possível carregar as listas.',
-    helpFlag:    '🚩 Sinalizar — Os cartões nesta lista ficarão vermelhos após o número de dias definido.',
-    helpDone:    '✓ Concluído — Os cartões movidos aqui param de acumular tempo. O cronômetro congela.',
-    helpIgnore:  '⊘ Ignorar — Os cartões nesta lista ficam ocultos do painel e do badge do ListClock.',
-    exportTitle:    'Exportar Dados',
-    exportCsvBtn:   'Baixar como CSV',
-    exportXlsxBtn:  'Baixar como Excel',
-    exportFetching: 'Escaneando cartões...',
-    exportBuilding: 'Preparando arquivo...',
-    exportDone:     '{n} cartões exportados.',
-    exportEmpty:    'Nenhum cartão encontrado para exportar.',
-    exportError:    'Falha ao exportar. Tente novamente.',
-    contactTitle:   'Fale Conosco',
-    contactBtn:     'Fale Conosco'
-  }
-};
-
-var LANGS = [
-  { code: 'en', label: 'English' },
-  { code: 'tr', label: 'Türkçe' },
-  { code: 'es', label: 'Español' },
-  { code: 'pt', label: 'Português' }
-];
-
-document.addEventListener('DOMContentLoaded', function() {
-  LANGS.forEach(function(l) {
-    var btn = document.getElementById('lang-' + l.code);
-    if (btn) btn.addEventListener('click', function() { setLang(l.code); });
-  });
-
-  var csvBtn   = document.getElementById('export-csv');
-  var xlsxBtn  = document.getElementById('export-xlsx');
-  if (csvBtn)  csvBtn.addEventListener('click', function() { runExport('csv'); });
-  if (xlsxBtn) xlsxBtn.addEventListener('click', function() { runExport('xlsx'); });
-});
-
-var currentLang = 'en', boardLists = [], listSettings = {};
-var currentToken = null, currentBoardId = null, isExporting = false;
-
-window.setLang = function(lang) {
-  currentLang = lang;
-  LANGS.forEach(function(l) {
-    var btn = document.getElementById('lang-' + l.code);
-    if (btn) btn.className = 'lang-btn' + (l.code === lang ? ' active' : '');
-  });
-  applyStrings();
-  renderLists();
-};
-
-function applyStrings() {
-  var s = STRINGS[currentLang];
-  document.getElementById('lang-title').innerText  = s.langTitle;
-  document.getElementById('lists-title').innerText = s.listsTitle;
-  document.getElementById('help-flag').innerText   = s.helpFlag;
-  document.getElementById('help-done').innerText   = s.helpDone;
-  document.getElementById('help-ignore').innerText = s.helpIgnore;
-  var saveBtn = document.getElementById('save');
-  if (saveBtn) saveBtn.innerText = s.save;
-
-  var exportTitleEl = document.getElementById('export-title');
-  var csvBtn  = document.getElementById('export-csv');
-  var xlsxBtn = document.getElementById('export-xlsx');
-  if (exportTitleEl) exportTitleEl.innerText = s.exportTitle;
-  if (csvBtn)  csvBtn.innerText  = s.exportCsvBtn;
-  if (xlsxBtn) xlsxBtn.innerText = s.exportXlsxBtn;
-
-  var contactTitleEl = document.getElementById('contact-title');
-  var contactLabel   = document.getElementById('contact-label');
-  if (contactTitleEl) contactTitleEl.innerText = s.contactTitle;
-  if (contactLabel)   contactLabel.innerText   = s.contactBtn;
-}
-
-function updatePill(input) {
-  var pill = input.closest ? input.closest('.flag-pill') : input.parentNode;
-  if (input.value && parseInt(input.value) > 0) {
-    pill.className = 'flag-pill active';
-  } else {
-    pill.className = 'flag-pill';
-  }
-}
-
-function makeToggle(checked, name, cls) {
-  var label = document.createElement('label');
-  label.className = 'toggle';
-  var cb = document.createElement('input');
-  cb.type = 'checkbox';
-  cb.checked = checked;
-  cb.dataset.name = name;
-  cb.className = cls;
-  var slider = document.createElement('span');
-  slider.className = 'slider';
-  label.appendChild(cb);
-  label.appendChild(slider);
-  return label;
-}
-
-function renderLists() {
-  var s = STRINGS[currentLang];
-  var container = document.getElementById('lists');
-  container.innerHTML = '';
-
-  boardLists.forEach(function(list) {
-    var saved = listSettings[list.name] || { done: false, ignore: false, threshold: '' };
-
-    var item = document.createElement('div');
-    item.className = 'list-item' + (saved.ignore ? ' ignored' : '');
-
-    var nameSpan = document.createElement('span');
-    nameSpan.className = 'list-name';
-    nameSpan.innerText = list.name;
-    nameSpan.title = list.name;
-
-    var controls = document.createElement('div');
-    controls.className = 'item-controls';
-
-    var pill = document.createElement('div');
-    pill.className = 'flag-pill' + (saved.threshold ? ' active' : '');
-    var flagIcon = document.createElement('span');
-    flagIcon.className = 'flag-icon';
-    flagIcon.innerText = '🚩';
-    var input = document.createElement('input');
-    input.type = 'number';
-    input.min = '1'; input.max = '999';
-    input.placeholder = '—';
-    input.value = saved.threshold || '';
-    input.dataset.name = list.name;
-    input.className = 'threshold-input';
-    input.addEventListener('input', function() { updatePill(this); });
-    var daysLbl = document.createElement('span');
-    daysLbl.className = 'control-label';
-    daysLbl.innerText = s.days;
-    pill.appendChild(flagIcon);
-    pill.appendChild(input);
-    pill.appendChild(daysLbl);
-
-    var sep1 = document.createElement('div');
-    sep1.className = 'separator';
-
-    var doneLbl = document.createElement('span');
-    doneLbl.className = 'control-label';
-    doneLbl.innerText = s.doneLabel;
-    var doneToggle = makeToggle(saved.done || false, list.name, 'done-checkbox');
-
-    var sep2 = document.createElement('div');
-    sep2.className = 'separator';
-
-    var ignoreLbl = document.createElement('span');
-    ignoreLbl.className = 'control-label';
-    ignoreLbl.innerText = s.ignoreLabel;
-    var ignoreToggle = makeToggle(saved.ignore || false, list.name, 'ignore-checkbox');
-
-    ignoreToggle.querySelector('input').addEventListener('change', function() {
-      item.className = 'list-item' + (this.checked ? ' ignored' : '');
-    });
-
-    controls.appendChild(pill);
-    controls.appendChild(sep1);
-    controls.appendChild(doneLbl);
-    controls.appendChild(doneToggle);
-    controls.appendChild(sep2);
-    controls.appendChild(ignoreLbl);
-    controls.appendChild(ignoreToggle);
-
-    item.appendChild(nameSpan);
-    item.appendChild(controls);
-    container.appendChild(item);
-  });
-}
-
-t.render(function() {
-  var restApi = t.getRestApi();
-  return restApi.getToken().then(function(token) {
-    currentToken = token;
-    return Promise.all([
-      t.board('id'),
-      t.get('board', 'shared', 'listSettings'),
-      t.get('board', 'shared', 'language')
-    ]).then(function(results) {
-      var boardId   = results[0].id;
-      currentBoardId = boardId;
-      listSettings  = results[1] || {};
-      var savedLang = results[2] || 'en';
-      currentLang   = savedLang;
-      LANGS.forEach(function(l) {
-        var btn = document.getElementById('lang-' + l.code);
-        if (btn) btn.className = 'lang-btn' + (l.code === savedLang ? ' active' : '');
-      });
-      applyStrings();
-      return fetch(
-        'https://api.trello.com/1/boards/' + boardId +
-        '/lists?key=' + API_KEY + '&token=' + token
-      )
-      .then(function(r) { return r.json(); })
-      .then(function(lists) {
-        boardLists = lists;
-        renderLists();
-        document.getElementById('save').style.display = 'block';
-        applyStrings();
-      });
-    });
-  }).catch(function() {
-    document.getElementById('lists').innerHTML =
-      '<div class="loading">' + STRINGS[currentLang].error + '</div>';
-  });
-});
-
-document.getElementById('save').addEventListener('click', function() {
-  var settings = {};
-  document.querySelectorAll('.threshold-input').forEach(function(input) {
-    var name = input.dataset.name;
-    if (!settings[name]) settings[name] = { done: false, ignore: false, threshold: '' };
-    settings[name].threshold = input.value ? parseInt(input.value) : '';
-  });
-  document.querySelectorAll('.done-checkbox').forEach(function(cb) {
-    var name = cb.dataset.name;
-    if (!settings[name]) settings[name] = { done: false, ignore: false, threshold: '' };
-    settings[name].done = cb.checked;
-  });
-  document.querySelectorAll('.ignore-checkbox').forEach(function(cb) {
-    var name = cb.dataset.name;
-    if (!settings[name]) settings[name] = { done: false, ignore: false, threshold: '' };
-    settings[name].ignore = cb.checked;
-  });
-  Promise.all([
-    t.set('board', 'shared', 'listSettings', settings),
-    t.set('board', 'shared', 'language', currentLang)
-  ]).then(function() { t.closeModal(); });
-});
-
-/* ===================== EXPORT ===================== */
-
-function setExportStatus(text) {
-  var el = document.getElementById('export-status');
-  if (!el) return;
-  if (text) {
-    el.innerText = text;
-    el.classList.add('visible');
-  } else {
-    el.classList.remove('visible');
-    el.innerText = '';
-  }
-}
-
-function setExportButtonsDisabled(disabled) {
-  var csvBtn  = document.getElementById('export-csv');
-  var xlsxBtn = document.getElementById('export-xlsx');
-  if (csvBtn)  csvBtn.disabled  = disabled;
-  if (xlsxBtn) xlsxBtn.disabled = disabled;
-}
-
-function formatTime(ms) {
-  var minutes = Math.floor(ms / (1000 * 60));
-  var hours   = Math.floor(ms / (1000 * 60 * 60));
-  var days    = Math.floor(hours / 24);
-  var rest    = hours % 24;
-  if (minutes < 60) return minutes + ' minutes';
-  if (days > 0 && rest > 0) return days + ' days ' + rest + ' hours';
-  if (days > 0) return days + ' days';
-  return hours + ' hours';
-}
-
-function formatDateFull(d) {
-  var dt  = new Date(d);
-  var y   = dt.getFullYear();
-  var m   = String(dt.getMonth() + 1).padStart(2, '0');
-  var day = String(dt.getDate()).padStart(2, '0');
-  return y + '-' + m + '-' + day;
-}
-
-function getCustomFieldRawValue(item) {
-  if (!item) return '';
-  if (item.value) {
-    if (item.value.text !== undefined)    return item.value.text;
-    if (item.value.number !== undefined)  return item.value.number;
-    if (item.value.checked !== undefined) return item.value.checked;
-    if (item.value.date !== undefined)    return item.value.date;
-  }
-  if (item.idValue) return item.idValue;
-  return '';
-}
-
-function csvEscape(val) {
-  var s = (val === null || val === undefined) ? '' : String(val);
-  if (/[",\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
-  return s;
-}
-
-function buildExportRows(cards, customFields, listMap) {
-  var rows = [];
-
-  cards.forEach(function(card) {
-    var listName = listMap[card.idList] || '';
-    var setting  = listSettings[listName] || {};
-    if (setting.ignore) return; // ignored lists excluded, consistent with panel/badge
-
-    var actions = (card.actions || []).slice().reverse();
-    var moveActions  = actions.filter(function(a) { return a.data && a.data.listAfter; });
-    var createAction = actions.find(function(a) { return a.type === 'createCard'; });
-    var lastMove     = moveActions.length
-      ? moveActions[moveActions.length - 1]
-      : (createAction || actions[actions.length - 1]);
-
-    var isDone = setting.done || false;
-    var currentStageMs = lastMove
-      ? ((isDone ? new Date(lastMove.date) : new Date()) - new Date(lastMove.date))
-      : 0;
-    var cardAgeMs = actions.length ? (Date.now() - new Date(actions[0].date)) : 0;
-
-    var createdBy = '';
-    if (createAction && createAction.memberCreator) {
-      createdBy = createAction.memberCreator.fullName || createAction.memberCreator.username || '';
+    /* Generic white card — every section's white content box uses this */
+    .card {
+      background: white; border: 1px solid #dfe1e6; border-radius: 8px;
+      padding: 12px 14px;
     }
 
-    var activityCount = {};
-    actions.forEach(function(a) {
-      if (a.memberCreator) {
-        var name = a.memberCreator.fullName || a.memberCreator.username || '';
-        if (name) activityCount[name] = (activityCount[name] || 0) + 1;
-      }
-    });
-    var mostActive = '', mostActiveCount = 0;
-    Object.keys(activityCount).forEach(function(name) {
-      if (activityCount[name] > mostActiveCount) { mostActive = name; mostActiveCount = activityCount[name]; }
-    });
-
-    var row = {
-      'Kart Adı':      card.name,
-      'Liste':         listName,
-      'Current Stage': formatTime(currentStageMs),
-      'Card Age':      formatTime(cardAgeMs),
-      'Created By':    createdBy,
-      'Most Active':   mostActive,
-      'Due Date':      card.due ? formatDateFull(card.due) : '',
-      'Tamamlandı':    card.dueComplete ? 'Evet' : 'Hayır'
-    };
-
-    (customFields || []).forEach(function(cf) {
-      var item = (card.customFieldItems || []).find(function(ci) { return ci.idCustomField === cf.id; });
-      row[cf.name] = getCustomFieldRawValue(item);
-    });
-
-    rows.push(row);
-  });
-
-  return rows;
-}
-
-function downloadBlob(content, filename, mime) {
-  var blob = new Blob([content], { type: mime });
-  var url  = URL.createObjectURL(blob);
-  var a    = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-}
-
-function exportToCsv(rows, filename) {
-  var headers = Object.keys(rows[0]);
-  var lines = [headers.map(csvEscape).join(',')];
-  rows.forEach(function(r) {
-    lines.push(headers.map(function(h) { return csvEscape(r[h]); }).join(','));
-  });
-  // UTF-8 BOM so Excel renders Turkish/accented characters correctly
-  downloadBlob('\uFEFF' + lines.join('\r\n'), filename, 'text/csv;charset=utf-8;');
-}
-
-function exportToXlsx(rows, filename) {
-  var ws = XLSX.utils.json_to_sheet(rows);
-  var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'ListClock');
-  XLSX.writeFile(wb, filename);
-}
-
-function runExport(format) {
-  if (isExporting || !currentToken || !currentBoardId) return;
-  isExporting = true;
-  setExportButtonsDisabled(true);
-  setExportStatus(STRINGS[currentLang].exportFetching);
-
-  var listMap = {};
-  boardLists.forEach(function(l) { listMap[l.id] = l.name; });
-
-  var cardsUrl =
-    'https://api.trello.com/1/boards/' + currentBoardId + '/cards/open' +
-    '?fields=name,idList,due,dueComplete' +
-    '&actions=createCard,updateCard:idList&actions_limit=1000' +
-    '&action_fields=date,data,type' +
-    '&actionMemberCreator=true&actionMemberCreator_fields=fullName,username' +
-    '&customFieldItems=true' +
-    '&key=' + API_KEY + '&token=' + currentToken;
-
-  var fieldsUrl =
-    'https://api.trello.com/1/boards/' + currentBoardId + '/customFields' +
-    '?key=' + API_KEY + '&token=' + currentToken;
-
-  Promise.all([
-    fetch(fieldsUrl).then(function(r) { return r.json(); }),
-    fetch(cardsUrl).then(function(r) { return r.json(); })
-  ]).then(function(results) {
-    var customFields = Array.isArray(results[0]) ? results[0] : [];
-    var cards         = Array.isArray(results[1]) ? results[1] : [];
-
-    setExportStatus(STRINGS[currentLang].exportBuilding);
-    var rows = buildExportRows(cards, customFields, listMap);
-
-    if (!rows.length) {
-      setExportStatus(STRINGS[currentLang].exportEmpty);
-      isExporting = false;
-      setExportButtonsDisabled(false);
-      return;
+    /* Help box */
+    .help-box {
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .help-row {
+      font-size: 12px; color: #5e6c84; line-height: 1.5;
     }
 
-    var filename = 'ListClock-export-' + formatDateFull(new Date());
-    if (format === 'csv') {
-      exportToCsv(rows, filename + '.csv');
-    } else {
-      exportToXlsx(rows, filename + '.xlsx');
+    .list-item {
+      display: flex; align-items: center;
+      background: white; border: 1px solid #dfe1e6;
+      border-radius: 8px; padding: 9px 12px; margin-bottom: 6px; gap: 10px;
     }
+    .list-item:last-child { margin-bottom: 0; }
+    .list-item.ignored { opacity: 0.45; }
+    .list-name {
+      flex: 1; font-size: 13px; font-weight: 500; color: #172b4d;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+    }
+    .item-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .control-label { font-size: 11px; color: #5e6c84; white-space: nowrap; }
+    .flag-pill {
+      display: flex; align-items: center; gap: 5px;
+      background: #f4f5f7; border: 1px solid #dfe1e6;
+      border-radius: 6px; padding: 3px 8px; transition: all 0.2s;
+    }
+    .flag-pill.active { background: #ffebe6; border-color: #eb5a46; }
+    .flag-pill.active .flag-icon { color: #eb5a46; }
+    .flag-pill.active .control-label { color: #eb5a46; }
+    .flag-icon { font-size: 12px; }
+    .threshold-input {
+      width: 44px; padding: 2px 4px; border: none; background: transparent;
+      font-size: 13px; text-align: center; color: #172b4d; outline: none;
+    }
+    .flag-pill.active .threshold-input { color: #eb5a46; font-weight: 600; }
+    .separator { width: 1px; height: 20px; background: #dfe1e6; flex-shrink: 0; }
+    .toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #dfe1e6; border-radius: 20px; transition: 0.2s;
+    }
+    .slider:before {
+      position: absolute; content: "";
+      height: 14px; width: 14px; left: 3px; bottom: 3px;
+      background: white; border-radius: 50%; transition: 0.2s;
+    }
+    input:checked + .slider { background: #0052cc; }
+    input:checked + .slider:before { transform: translateX(16px); }
+    .save-btn {
+      width: 100%; padding: 12px; background: #0052cc; color: white;
+      border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
+      cursor: pointer;
+    }
+    .save-btn:hover { background: #0065ff; }
+    .loading { text-align: center; color: #5e6c84; padding: 24px; }
 
-    setExportStatus(STRINGS[currentLang].exportDone.replace('{n}', rows.length));
-    isExporting = false;
-    setExportButtonsDisabled(false);
-  }).catch(function() {
-    setExportStatus(STRINGS[currentLang].exportError);
-    isExporting = false;
-    setExportButtonsDisabled(false);
-  });
-}
+    /* Export */
+    .export-buttons { display: flex; gap: 8px; }
+    .export-btn {
+      flex: 1 1 0; min-width: 0; height: 38px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 8px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      border: 2px solid #dfe1e6; background: white; color: #172b4d;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .export-btn:hover { border-color: #0052cc; color: #0052cc; }
+    .export-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .export-status {
+      font-size: 11px; color: #5e6c84;
+      height: 0; overflow: hidden; transition: height 0.15s;
+    }
+    .export-status.visible { height: 16px; margin-top: 8px; }
+
+    /* Contact */
+    .contact-btn {
+      width: 100%; height: 38px;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      border-radius: 8px; font-size: 13px; font-weight: 600;
+      border: 2px solid #dfe1e6; background: white; color: #172b4d;
+      cursor: pointer; text-decoration: none; transition: all 0.15s;
+    }
+    .contact-btn:hover { border-color: #0052cc; color: #0052cc; }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="section">
+      <div class="section-title" id="lang-title">Language</div>
+      <div class="lang-options">
+        <button class="lang-btn active" id="lang-en">English</button>
+        <button class="lang-btn" id="lang-tr">Türkçe</button>
+        <button class="lang-btn" id="lang-es">Español</button>
+        <button class="lang-btn" id="lang-pt">Português</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="card help-box">
+        <div class="help-row" id="help-flag"></div>
+        <div class="help-row" id="help-done"></div>
+        <div class="help-row" id="help-ignore"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title" id="lists-title">List Settings</div>
+      <div id="lists"><div class="loading">Loading...</div></div>
+      <button class="save-btn" id="save" style="display:none; margin-top: 10px;">Save Settings</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title" id="export-title">Export Data</div>
+      <div class="card">
+        <div class="export-buttons">
+          <button class="export-btn" id="export-csv">Download as CSV</button>
+          <button class="export-btn" id="export-xlsx">Download as Excel</button>
+        </div>
+        <div class="export-status" id="export-status"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title" id="contact-title">Contact</div>
+      <div class="card">
+        <a class="contact-btn" id="contact-btn" href="https://forms.gle/AWmvM5AsYsFhTwPz7" target="_blank" rel="noopener noreferrer">
+          📩 <span id="contact-label">Bize Ulaşın</span>
+        </a>
+      </div>
+    </div>
+  </div>
+  <script src="/settings.js"></script>
+</body>
+</html>
