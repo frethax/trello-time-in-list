@@ -15,7 +15,17 @@ var STRINGS = {
     error:       'Could not load lists. Please reconnect your account.',
     helpFlag:    '🚩 Flag — Cards in this list will turn red after the set number of days.',
     helpDone:    '✓ Done — Cards moved here stop accumulating time. Their timer freezes.',
-    helpIgnore:  '⊘ Ignore — Cards in this list are hidden from the ListClock panel and badge.'
+    helpIgnore:  '⊘ Ignore — Cards in this list are hidden from the ListClock panel and badge.',
+    exportTitle:    'Export Data',
+    exportCsvBtn:   'Download as CSV',
+    exportXlsxBtn:  'Download as Excel',
+    exportFetching: 'Scanning cards...',
+    exportBuilding: 'Preparing file...',
+    exportDone:     '{n} cards exported.',
+    exportEmpty:    'No cards found to export.',
+    exportError:    'Export failed. Please try again.',
+    contactTitle:   'Contact',
+    contactBtn:     'Contact Us'
   },
   tr: {
     langTitle:   'Dil',
@@ -28,7 +38,17 @@ var STRINGS = {
     error:       'Listeler yüklenemedi. Lütfen hesabınızı yeniden bağlayın.',
     helpFlag:    '🚩 İşaretle — Bu listedeki kartlar belirlenen gün sayısını aşınca kırmızıya döner.',
     helpDone:    '✓ Tamamlandı — Buraya taşınan kartların süresi dondurulur. Sayaç durur.',
-    helpIgnore:  '⊘ Yoksay — Bu listedeki kartlar ListClock panelinde ve badge\'de gösterilmez.'
+    helpIgnore:  '⊘ Yoksay — Bu listedeki kartlar ListClock panelinde ve badge\'de gösterilmez.',
+    exportTitle:    'Veri Dışa Aktar',
+    exportCsvBtn:   'CSV olarak indir',
+    exportXlsxBtn:  'Excel olarak indir',
+    exportFetching: 'Kartlar taranıyor...',
+    exportBuilding: 'Dosya hazırlanıyor...',
+    exportDone:     '{n} kart dışa aktarıldı.',
+    exportEmpty:    'Dışa aktarılacak kart bulunamadı.',
+    exportError:    'Dışa aktarma başarısız oldu. Lütfen tekrar deneyin.',
+    contactTitle:   'İletişim',
+    contactBtn:     'Bize Ulaşın'
   },
   es: {
     langTitle:   'Idioma',
@@ -41,7 +61,17 @@ var STRINGS = {
     error:       'No se pudieron cargar las listas.',
     helpFlag:    '🚩 Marcar — Las tarjetas en esta lista se volverán rojas después del número de días establecido.',
     helpDone:    '✓ Hecho — Las tarjetas movidas aquí dejan de acumular tiempo. El temporizador se congela.',
-    helpIgnore:  '⊘ Ignorar — Las tarjetas en esta lista se ocultan del panel y la insignia de ListClock.'
+    helpIgnore:  '⊘ Ignorar — Las tarjetas en esta lista se ocultan del panel y la insignia de ListClock.',
+    exportTitle:    'Exportar Datos',
+    exportCsvBtn:   'Descargar como CSV',
+    exportXlsxBtn:  'Descargar como Excel',
+    exportFetching: 'Escaneando tarjetas...',
+    exportBuilding: 'Preparando archivo...',
+    exportDone:     '{n} tarjetas exportadas.',
+    exportEmpty:    'No se encontraron tarjetas para exportar.',
+    exportError:    'Error al exportar. Inténtalo de nuevo.',
+    contactTitle:   'Contacto',
+    contactBtn:     'Contáctanos'
   },
   pt: {
     langTitle:   'Idioma',
@@ -54,7 +84,17 @@ var STRINGS = {
     error:       'Não foi possível carregar as listas.',
     helpFlag:    '🚩 Sinalizar — Os cartões nesta lista ficarão vermelhos após o número de dias definido.',
     helpDone:    '✓ Concluído — Os cartões movidos aqui param de acumular tempo. O cronômetro congela.',
-    helpIgnore:  '⊘ Ignorar — Os cartões nesta lista ficam ocultos do painel e do badge do ListClock.'
+    helpIgnore:  '⊘ Ignorar — Os cartões nesta lista ficam ocultos do painel e do badge do ListClock.',
+    exportTitle:    'Exportar Dados',
+    exportCsvBtn:   'Baixar como CSV',
+    exportXlsxBtn:  'Baixar como Excel',
+    exportFetching: 'Escaneando cartões...',
+    exportBuilding: 'Preparando arquivo...',
+    exportDone:     '{n} cartões exportados.',
+    exportEmpty:    'Nenhum cartão encontrado para exportar.',
+    exportError:    'Falha ao exportar. Tente novamente.',
+    contactTitle:   'Fale Conosco',
+    contactBtn:     'Fale Conosco'
   }
 };
 
@@ -70,9 +110,15 @@ document.addEventListener('DOMContentLoaded', function() {
     var btn = document.getElementById('lang-' + l.code);
     if (btn) btn.addEventListener('click', function() { setLang(l.code); });
   });
+
+  var csvBtn   = document.getElementById('export-csv');
+  var xlsxBtn  = document.getElementById('export-xlsx');
+  if (csvBtn)  csvBtn.addEventListener('click', function() { runExport('csv'); });
+  if (xlsxBtn) xlsxBtn.addEventListener('click', function() { runExport('xlsx'); });
 });
 
 var currentLang = 'en', boardLists = [], listSettings = {};
+var currentToken = null, currentBoardId = null, isExporting = false;
 
 window.setLang = function(lang) {
   currentLang = lang;
@@ -93,6 +139,18 @@ function applyStrings() {
   document.getElementById('help-ignore').innerText = s.helpIgnore;
   var saveBtn = document.getElementById('save');
   if (saveBtn) saveBtn.innerText = s.save;
+
+  var exportTitleEl = document.getElementById('export-title');
+  var csvBtn  = document.getElementById('export-csv');
+  var xlsxBtn = document.getElementById('export-xlsx');
+  if (exportTitleEl) exportTitleEl.innerText = s.exportTitle;
+  if (csvBtn)  csvBtn.innerText  = s.exportCsvBtn;
+  if (xlsxBtn) xlsxBtn.innerText = s.exportXlsxBtn;
+
+  var contactTitleEl = document.getElementById('contact-title');
+  var contactLabel   = document.getElementById('contact-label');
+  if (contactTitleEl) contactTitleEl.innerText = s.contactTitle;
+  if (contactLabel)   contactLabel.innerText   = s.contactBtn;
 }
 
 function updatePill(input) {
@@ -195,12 +253,14 @@ function renderLists() {
 t.render(function() {
   var restApi = t.getRestApi();
   return restApi.getToken().then(function(token) {
+    currentToken = token;
     return Promise.all([
       t.board('id'),
       t.get('board', 'shared', 'listSettings'),
       t.get('board', 'shared', 'language')
     ]).then(function(results) {
       var boardId   = results[0].id;
+      currentBoardId = boardId;
       listSettings  = results[1] || {};
       var savedLang = results[2] || 'en';
       currentLang   = savedLang;
@@ -249,3 +309,206 @@ document.getElementById('save').addEventListener('click', function() {
     t.set('board', 'shared', 'language', currentLang)
   ]).then(function() { t.closeModal(); });
 });
+
+/* ===================== EXPORT ===================== */
+
+function setExportStatus(text) {
+  var el = document.getElementById('export-status');
+  if (!el) return;
+  if (text) {
+    el.innerText = text;
+    el.classList.add('visible');
+  } else {
+    el.classList.remove('visible');
+    el.innerText = '';
+  }
+}
+
+function setExportButtonsDisabled(disabled) {
+  var csvBtn  = document.getElementById('export-csv');
+  var xlsxBtn = document.getElementById('export-xlsx');
+  if (csvBtn)  csvBtn.disabled  = disabled;
+  if (xlsxBtn) xlsxBtn.disabled = disabled;
+}
+
+function formatTime(ms) {
+  var minutes = Math.floor(ms / (1000 * 60));
+  var hours   = Math.floor(ms / (1000 * 60 * 60));
+  var days    = Math.floor(hours / 24);
+  var rest    = hours % 24;
+  if (minutes < 60) return minutes + ' minutes';
+  if (days > 0 && rest > 0) return days + ' days ' + rest + ' hours';
+  if (days > 0) return days + ' days';
+  return hours + ' hours';
+}
+
+function formatDateFull(d) {
+  var dt  = new Date(d);
+  var y   = dt.getFullYear();
+  var m   = String(dt.getMonth() + 1).padStart(2, '0');
+  var day = String(dt.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
+function getCustomFieldRawValue(item) {
+  if (!item) return '';
+  if (item.value) {
+    if (item.value.text !== undefined)    return item.value.text;
+    if (item.value.number !== undefined)  return item.value.number;
+    if (item.value.checked !== undefined) return item.value.checked;
+    if (item.value.date !== undefined)    return item.value.date;
+  }
+  if (item.idValue) return item.idValue;
+  return '';
+}
+
+function csvEscape(val) {
+  var s = (val === null || val === undefined) ? '' : String(val);
+  if (/[",\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function buildExportRows(cards, customFields, listMap) {
+  var rows = [];
+
+  cards.forEach(function(card) {
+    var listName = listMap[card.idList] || '';
+    var setting  = listSettings[listName] || {};
+    if (setting.ignore) return; // ignored lists excluded, consistent with panel/badge
+
+    var actions = (card.actions || []).slice().reverse();
+    var moveActions  = actions.filter(function(a) { return a.data && a.data.listAfter; });
+    var createAction = actions.find(function(a) { return a.type === 'createCard'; });
+    var lastMove     = moveActions.length
+      ? moveActions[moveActions.length - 1]
+      : (createAction || actions[actions.length - 1]);
+
+    var isDone = setting.done || false;
+    var currentStageMs = lastMove
+      ? ((isDone ? new Date(lastMove.date) : new Date()) - new Date(lastMove.date))
+      : 0;
+    var cardAgeMs = actions.length ? (Date.now() - new Date(actions[0].date)) : 0;
+
+    var createdBy = '';
+    if (createAction && createAction.memberCreator) {
+      createdBy = createAction.memberCreator.fullName || createAction.memberCreator.username || '';
+    }
+
+    var activityCount = {};
+    actions.forEach(function(a) {
+      if (a.memberCreator) {
+        var name = a.memberCreator.fullName || a.memberCreator.username || '';
+        if (name) activityCount[name] = (activityCount[name] || 0) + 1;
+      }
+    });
+    var mostActive = '', mostActiveCount = 0;
+    Object.keys(activityCount).forEach(function(name) {
+      if (activityCount[name] > mostActiveCount) { mostActive = name; mostActiveCount = activityCount[name]; }
+    });
+
+    var row = {
+      'Kart Adı':      card.name,
+      'Liste':         listName,
+      'Current Stage': formatTime(currentStageMs),
+      'Card Age':      formatTime(cardAgeMs),
+      'Created By':    createdBy,
+      'Most Active':   mostActive,
+      'Due Date':      card.due ? formatDateFull(card.due) : '',
+      'Tamamlandı':    card.dueComplete ? 'Evet' : 'Hayır'
+    };
+
+    (customFields || []).forEach(function(cf) {
+      var item = (card.customFieldItems || []).find(function(ci) { return ci.idCustomField === cf.id; });
+      row[cf.name] = getCustomFieldRawValue(item);
+    });
+
+    rows.push(row);
+  });
+
+  return rows;
+}
+
+function downloadBlob(content, filename, mime) {
+  var blob = new Blob([content], { type: mime });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+}
+
+function exportToCsv(rows, filename) {
+  var headers = Object.keys(rows[0]);
+  var lines = [headers.map(csvEscape).join(',')];
+  rows.forEach(function(r) {
+    lines.push(headers.map(function(h) { return csvEscape(r[h]); }).join(','));
+  });
+  // UTF-8 BOM so Excel renders Turkish/accented characters correctly
+  downloadBlob('\uFEFF' + lines.join('\r\n'), filename, 'text/csv;charset=utf-8;');
+}
+
+function exportToXlsx(rows, filename) {
+  var ws = XLSX.utils.json_to_sheet(rows);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ListClock');
+  XLSX.writeFile(wb, filename);
+}
+
+function runExport(format) {
+  if (isExporting || !currentToken || !currentBoardId) return;
+  isExporting = true;
+  setExportButtonsDisabled(true);
+  setExportStatus(STRINGS[currentLang].exportFetching);
+
+  var listMap = {};
+  boardLists.forEach(function(l) { listMap[l.id] = l.name; });
+
+  var cardsUrl =
+    'https://api.trello.com/1/boards/' + currentBoardId + '/cards/open' +
+    '?fields=name,idList,due,dueComplete' +
+    '&actions=createCard,updateCard:idList&actions_limit=1000' +
+    '&action_fields=date,data,type' +
+    '&actionMemberCreator=true&actionMemberCreator_fields=fullName,username' +
+    '&customFieldItems=true' +
+    '&key=' + API_KEY + '&token=' + currentToken;
+
+  var fieldsUrl =
+    'https://api.trello.com/1/boards/' + currentBoardId + '/customFields' +
+    '?key=' + API_KEY + '&token=' + currentToken;
+
+  Promise.all([
+    fetch(fieldsUrl).then(function(r) { return r.json(); }),
+    fetch(cardsUrl).then(function(r) { return r.json(); })
+  ]).then(function(results) {
+    var customFields = Array.isArray(results[0]) ? results[0] : [];
+    var cards         = Array.isArray(results[1]) ? results[1] : [];
+
+    setExportStatus(STRINGS[currentLang].exportBuilding);
+    var rows = buildExportRows(cards, customFields, listMap);
+
+    if (!rows.length) {
+      setExportStatus(STRINGS[currentLang].exportEmpty);
+      isExporting = false;
+      setExportButtonsDisabled(false);
+      return;
+    }
+
+    var filename = 'ListClock-export-' + formatDateFull(new Date());
+    if (format === 'csv') {
+      exportToCsv(rows, filename + '.csv');
+    } else {
+      exportToXlsx(rows, filename + '.xlsx');
+    }
+
+    setExportStatus(STRINGS[currentLang].exportDone.replace('{n}', rows.length));
+    isExporting = false;
+    setExportButtonsDisabled(false);
+  }).catch(function() {
+    setExportStatus(STRINGS[currentLang].exportError);
+    isExporting = false;
+    setExportButtonsDisabled(false);
+  });
+}
