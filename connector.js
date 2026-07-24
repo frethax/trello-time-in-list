@@ -77,7 +77,7 @@ TrelloPowerUp.initialize({
         return t.modal({
           url:    t.signUrl('https://trello-time-in-list.vercel.app/settings.html'),
           accentColor: '#0052cc',
-          height: 680,
+          height: 720,
           fullscreen: false,
           title: 'ListClock Settings'
         });
