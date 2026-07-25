@@ -305,15 +305,24 @@ t.render(function() {
         'https://api.trello.com/1/boards/' + boardId +
         '/lists?key=' + API_KEY + '&token=' + token
       )
-      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (!r.ok) {
+          // 401/invalid token → token is stale, prompt reconnect
+          if (r.status === 401) { showConnectGate(); return null; }
+          throw new Error('Lists request failed with status ' + r.status);
+        }
+        return r.json();
+      })
       .then(function(lists) {
+        if (lists === null) return; // handled by showConnectGate
         boardLists = lists;
         renderLists();
         document.getElementById('save').style.display = 'block';
         applyStrings();
       });
     });
-  }).catch(function() {
+  }).catch(function(err) {
+    console.error('[ListClock] settings load failed:', err);
     document.getElementById('lists').innerHTML =
       '<div class="loading">' + STRINGS[currentLang].error + '</div>';
   });
@@ -516,8 +525,14 @@ function runExport(format) {
     '?key=' + API_KEY + '&token=' + currentToken;
 
   Promise.all([
-    fetch(fieldsUrl).then(function(r) { return r.json(); }),
-    fetch(cardsUrl).then(function(r) { return r.json(); })
+    fetch(fieldsUrl).then(function(r) {
+      if (!r.ok) throw new Error('customFields request failed: ' + r.status);
+      return r.json();
+    }),
+    fetch(cardsUrl).then(function(r) {
+      if (!r.ok) throw new Error('cards request failed: ' + r.status);
+      return r.json();
+    })
   ]).then(function(results) {
     var customFields = Array.isArray(results[0]) ? results[0] : [];
     var cards         = Array.isArray(results[1]) ? results[1] : [];
@@ -542,7 +557,8 @@ function runExport(format) {
     setExportStatus(STRINGS[currentLang].exportDone.replace('{n}', rows.length));
     isExporting = false;
     setExportButtonsDisabled(false);
-  }).catch(function() {
+  }).catch(function(err) {
+    console.error('[ListClock] export failed:', err);
     setExportStatus(STRINGS[currentLang].exportError);
     isExporting = false;
     setExportButtonsDisabled(false);
