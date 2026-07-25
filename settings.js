@@ -493,21 +493,180 @@ function exportToCsv(rows, filename) {
   downloadBlob('\uFEFF' + lines.join('\r\n'), filename, 'text/csv;charset=utf-8;');
 }
 
-function exportToXlsx(rows, filename) {
-  // Guard: if the SheetJS script was blocked (CSP) or failed to load,
-  // XLSX will be undefined — surface a clear console message.
-  if (typeof XLSX === 'undefined') {
-    throw new Error('XLSX library not loaded (blocked by CSP or network).');
+/* ---- Minimal dependency-free XLSX writer ----
+   An .xlsx file is a ZIP archive of XML parts. We build the required parts
+   as strings and pack them with a tiny store-only (no compression) ZIP writer.
+   No external library, no CDN, no CSP concerns. */
+
+function xlsxColLetter(n) {
+  // 0-based column index -> A, B, ... Z, AA, AB, ...
+  var s = '';
+  n = n + 1;
+  while (n > 0) {
+    var rem = (n - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    n = Math.floor((n - 1) / 26);
   }
-  var ws = XLSX.utils.json_to_sheet(rows);
-  var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'ListClock');
-  // Build the file in memory, then reuse our own Blob download path
-  // (the same one CSV uses and that we know works) instead of
-  // XLSX.writeFile, which relies on SheetJS's internal saver.
-  var wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  return s;
+}
+
+function xlsxEsc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+function buildSheetXml(rows) {
+  var headers = Object.keys(rows[0]);
+  var xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  xml += '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
+
+  // Header row
+  xml += '<row r="1">';
+  headers.forEach(function(h, c) {
+    var ref = xlsxColLetter(c) + '1';
+    xml += '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + xlsxEsc(h) + '</t></is></c>';
+  });
+  xml += '</row>';
+
+  // Data rows
+  rows.forEach(function(row, ri) {
+    var r = ri + 2;
+    xml += '<row r="' + r + '">';
+    headers.forEach(function(h, c) {
+      var val = row[h];
+      var ref = xlsxColLetter(c) + r;
+      if (typeof val === 'number' && isFinite(val)) {
+        xml += '<c r="' + ref + '"><v>' + val + '</v></c>';
+      } else {
+        var text = (val === null || val === undefined) ? '' : String(val);
+        xml += '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + xlsxEsc(text) + '</t></is></c>';
+      }
+    });
+    xml += '</row>';
+  });
+
+  xml += '</sheetData></worksheet>';
+  return xml;
+}
+
+/* --- CRC32 (for ZIP) --- */
+var _crcTable = (function() {
+  var table = [];
+  for (var n = 0; n < 256; n++) {
+    var c = n;
+    for (var k = 0; k < 8; k++) {
+      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(bytes) {
+  var crc = 0xFFFFFFFF;
+  for (var i = 0; i < bytes.length; i++) {
+    crc = (crc >>> 8) ^ _crcTable[(crc ^ bytes[i]) & 0xFF];
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
+function strToUtf8Bytes(str) {
+  return new TextEncoder().encode(str);
+}
+
+/* --- Store-only ZIP writer --- */
+function zipStore(files) {
+  // files: [{ name, bytes }]
+  var chunks = [];
+  var central = [];
+  var offset = 0;
+
+  function u16(n) { return [n & 0xFF, (n >>> 8) & 0xFF]; }
+  function u32(n) { return [n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF]; }
+
+  files.forEach(function(f) {
+    var nameBytes = strToUtf8Bytes(f.name);
+    var crc = crc32(f.bytes);
+    var size = f.bytes.length;
+
+    // Local file header
+    var local = []
+      .concat(u32(0x04034b50), u16(20), u16(0), u16(0), u16(0), u16(0),
+              u32(crc), u32(size), u32(size), u16(nameBytes.length), u16(0));
+    chunks.push(new Uint8Array(local));
+    chunks.push(nameBytes);
+    chunks.push(f.bytes);
+
+    // Central directory record
+    var cd = []
+      .concat(u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(0), u16(0),
+              u32(crc), u32(size), u32(size), u16(nameBytes.length),
+              u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset));
+    central.push(new Uint8Array(cd));
+    central.push(nameBytes);
+
+    offset += local.length + nameBytes.length + size;
+  });
+
+  var centralStart = offset;
+  var centralSize = 0;
+  central.forEach(function(c) { centralSize += c.length; });
+
+  var end = []
+    .concat(u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length),
+            u32(centralSize), u32(centralStart), u16(0));
+
+  var all = chunks.concat(central).concat([new Uint8Array(end)]);
+  var total = 0;
+  all.forEach(function(a) { total += a.length; });
+  var out = new Uint8Array(total);
+  var p = 0;
+  all.forEach(function(a) { out.set(a, p); p += a.length; });
+  return out;
+}
+
+function exportToXlsx(rows, filename) {
+  var contentTypes =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+    '</Types>';
+
+  var rootRels =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+    '</Relationships>';
+
+  var workbook =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+    'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+    '<sheets><sheet name="ListClock" sheetId="1" r:id="rId1"/></sheets></workbook>';
+
+  var workbookRels =
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+    '</Relationships>';
+
+  var sheet = buildSheetXml(rows);
+
+  var files = [
+    { name: '[Content_Types].xml',        bytes: strToUtf8Bytes(contentTypes) },
+    { name: '_rels/.rels',                bytes: strToUtf8Bytes(rootRels) },
+    { name: 'xl/workbook.xml',            bytes: strToUtf8Bytes(workbook) },
+    { name: 'xl/_rels/workbook.xml.rels', bytes: strToUtf8Bytes(workbookRels) },
+    { name: 'xl/worksheets/sheet1.xml',   bytes: strToUtf8Bytes(sheet) }
+  ];
+
+  var zipped = zipStore(files);
   downloadBlob(
-    wbout,
+    zipped,
     filename,
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   );
