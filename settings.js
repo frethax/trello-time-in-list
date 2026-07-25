@@ -27,7 +27,8 @@ var STRINGS = {
     contactTitle:   'Contact',
     contactBtn:     'Contact Us',
     connectMsg:     'Connect your Trello account to load and export list data.',
-    connectBtn:     'Connect Trello Account'
+    connectBtn:     'Connect Trello Account',
+    retryBtn:       'Try Again'
   },
   tr: {
     langTitle:   'Dil',
@@ -52,7 +53,8 @@ var STRINGS = {
     contactTitle:   'İletişim',
     contactBtn:     'Bize Ulaşın',
     connectMsg:     'Liste verilerini yükleyip dışa aktarmak için Trello hesabınızı bağlayın.',
-    connectBtn:     'Trello Hesabını Bağla'
+    connectBtn:     'Trello Hesabını Bağla',
+    retryBtn:       'Tekrar Dene'
   },
   es: {
     langTitle:   'Idioma',
@@ -77,7 +79,8 @@ var STRINGS = {
     contactTitle:   'Contacto',
     contactBtn:     'Contáctanos',
     connectMsg:     'Conecta tu cuenta de Trello para cargar y exportar los datos de las listas.',
-    connectBtn:     'Conectar Cuenta de Trello'
+    connectBtn:     'Conectar Cuenta de Trello',
+    retryBtn:       'Reintentar'
   },
   pt: {
     langTitle:   'Idioma',
@@ -102,7 +105,8 @@ var STRINGS = {
     contactTitle:   'Fale Conosco',
     contactBtn:     'Fale Conosco',
     connectMsg:     'Conecte sua conta Trello para carregar e exportar os dados das listas.',
-    connectBtn:     'Conectar Conta Trello'
+    connectBtn:     'Conectar Conta Trello',
+    retryBtn:       'Tentar Novamente'
   }
 };
 
@@ -278,6 +282,32 @@ function showConnectGate() {
   setExportButtonsDisabled(true);
 }
 
+// Fetch the board lists with a few automatic retries, so a transient
+// network blip or a momentary Trello hiccup (429/500) doesn't leave the
+// panel stuck on the error message.
+function fetchListsWithRetry(boardId, token, attempt) {
+  attempt = attempt || 0;
+  var url = 'https://api.trello.com/1/boards/' + boardId +
+            '/lists?key=' + API_KEY + '&token=' + token;
+  return fetch(url).then(function(r) {
+    if (r.ok) return r.json();
+    if (r.status === 401) return { __reconnect: true };   // stale token
+    // Retry transient failures (429 rate limit, 5xx) up to 3 times
+    if ((r.status === 429 || r.status >= 500) && attempt < 3) {
+      return new Promise(function(res) { setTimeout(res, 500 * (attempt + 1)); })
+        .then(function() { return fetchListsWithRetry(boardId, token, attempt + 1); });
+    }
+    throw new Error('Lists request failed with status ' + r.status);
+  }).catch(function(err) {
+    // Network-level failure (no response at all) — retry too
+    if (attempt < 3) {
+      return new Promise(function(res) { setTimeout(res, 500 * (attempt + 1)); })
+        .then(function() { return fetchListsWithRetry(boardId, token, attempt + 1); });
+    }
+    throw err;
+  });
+}
+
 t.render(function() {
   var restApi = t.getRestApi();
   return restApi.getToken().then(function(token) {
@@ -301,20 +331,9 @@ t.render(function() {
         if (btn) btn.className = 'lang-btn' + (l.code === savedLang ? ' active' : '');
       });
       applyStrings();
-      return fetch(
-        'https://api.trello.com/1/boards/' + boardId +
-        '/lists?key=' + API_KEY + '&token=' + token
-      )
-      .then(function(r) {
-        if (!r.ok) {
-          // 401/invalid token → token is stale, prompt reconnect
-          if (r.status === 401) { showConnectGate(); return null; }
-          throw new Error('Lists request failed with status ' + r.status);
-        }
-        return r.json();
-      })
+      return fetchListsWithRetry(boardId, token)
       .then(function(lists) {
-        if (lists === null) return; // handled by showConnectGate
+        if (lists && lists.__reconnect) { showConnectGate(); return; }
         boardLists = lists;
         renderLists();
         document.getElementById('save').style.display = 'block';
@@ -323,8 +342,18 @@ t.render(function() {
     });
   }).catch(function(err) {
     console.error('[ListClock] settings load failed:', err);
-    document.getElementById('lists').innerHTML =
-      '<div class="loading">' + STRINGS[currentLang].error + '</div>';
+    var container = document.getElementById('lists');
+    container.innerHTML = '';
+    var msg = document.createElement('div');
+    msg.className = 'loading';
+    msg.innerText = STRINGS[currentLang].error;
+    var retry = document.createElement('button');
+    retry.className = 'save-btn';
+    retry.style.marginTop = '10px';
+    retry.innerText = STRINGS[currentLang].retryBtn;
+    retry.addEventListener('click', function() { t.render(function() {}); });
+    container.appendChild(msg);
+    container.appendChild(retry);
   });
 });
 
