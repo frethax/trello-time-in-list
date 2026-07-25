@@ -413,7 +413,8 @@ function buildExportRows(cards, customFields, listMap, actionsByCard) {
   var rows = [];
 
   cards.forEach(function(card) {
-    var listName = listMap[card.idList] || '';
+    // Prefer the list name embedded on the card; fall back to listMap.
+    var listName = (card.list && card.list.name) ? card.list.name : (listMap[card.idList] || '');
     var setting  = listSettings[listName] || {};
     if (setting.ignore) return; // ignored lists excluded, consistent with panel/badge
 
@@ -450,14 +451,14 @@ function buildExportRows(cards, customFields, listMap, actionsByCard) {
     });
 
     var row = {
-      'Kart Adı':      card.name,
-      'Liste':         listName,
+      'Card Name':     card.name,
+      'List':          listName,
       'Current Stage': formatTime(currentStageMs),
       'Card Age':      formatTime(cardAgeMs),
       'Created By':    createdBy,
       'Most Active':   mostActive,
       'Due Date':      card.due ? formatDateFull(card.due) : '',
-      'Tamamlandı':    card.dueComplete ? 'Evet' : 'Hayır'
+      'Completed':     card.dueComplete ? 'Yes' : 'No'
     };
 
     (customFields || []).forEach(function(cf) {
@@ -710,11 +711,13 @@ function runExport(format) {
   var listMap = {};
   boardLists.forEach(function(l) { listMap[l.id] = l.name; });
 
-  // 1) Cards — simple request, no actions bundled in. customFieldItems is
-  //    lightweight and safe. If it 401s, we still get an array back or null.
+  // 1) Cards — ask Trello to embed each card's list object, so we get the
+  //    list name directly and don't depend on boardLists being complete
+  //    (which misses archived lists and can be stale).
   var cardsUrl =
     'https://api.trello.com/1/boards/' + currentBoardId + '/cards/open' +
     '?fields=name,idList,due,dueComplete' +
+    '&list=true&list_fields=name' +
     '&customFieldItems=true' +
     '&key=' + API_KEY + '&token=' + currentToken;
 
@@ -740,7 +743,8 @@ function runExport(format) {
 
     // Only need actions for cards we'll actually export (skip ignored lists)
     var exportCards = cards.filter(function(card) {
-      var setting = listSettings[listMap[card.idList] || ''] || {};
+      var ln = (card.list && card.list.name) ? card.list.name : (listMap[card.idList] || '');
+      var setting = listSettings[ln] || {};
       return !setting.ignore;
     });
 
