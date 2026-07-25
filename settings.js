@@ -409,7 +409,7 @@ function csvEscape(val) {
   return s;
 }
 
-function buildExportRows(cards, customFields, listMap) {
+function buildExportRows(cards, customFields, listMap, actionsByCard) {
   var rows = [];
 
   cards.forEach(function(card) {
@@ -417,7 +417,9 @@ function buildExportRows(cards, customFields, listMap) {
     var setting  = listSettings[listName] || {};
     if (setting.ignore) return; // ignored lists excluded, consistent with panel/badge
 
-    var actions = (card.actions || []).slice().reverse();
+    var raw = actionsByCard[card.id] || [];
+    // actions come newest-first from API; reverse to oldest-first
+    var actions = raw.slice().reverse();
     var moveActions  = actions.filter(function(a) { return a.data && a.data.listAfter; });
     var createAction = actions.find(function(a) { return a.type === 'createCard'; });
     var lastMove     = moveActions.length
@@ -498,6 +500,31 @@ function exportToXlsx(rows, filename) {
   XLSX.writeFile(wb, filename);
 }
 
+// Fetch that resolves to null on any failure instead of rejecting —
+// lets non-critical requests (custom fields, a single card's actions) fail
+// without aborting the whole export.
+function safeFetchJson(url) {
+  return fetch(url)
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .catch(function() { return null; });
+}
+
+// Run an array of task functions (each returns a Promise) in small batches
+// to stay well under Trello's rate limit (100 req / 10s per token).
+function runInBatches(items, batchSize, delayMs, worker) {
+  var i = 0;
+  function nextBatch() {
+    if (i >= items.length) return Promise.resolve();
+    var slice = items.slice(i, i + batchSize);
+    i += batchSize;
+    return Promise.all(slice.map(worker)).then(function() {
+      if (i >= items.length) return;
+      return new Promise(function(res) { setTimeout(res, delayMs); }).then(nextBatch);
+    });
+  }
+  return nextBatch();
+}
+
 function runExport(format) {
   if (isExporting) return;
   if (!currentToken || !currentBoardId) {
@@ -511,52 +538,78 @@ function runExport(format) {
   var listMap = {};
   boardLists.forEach(function(l) { listMap[l.id] = l.name; });
 
+  // 1) Cards — simple request, no actions bundled in. customFieldItems is
+  //    lightweight and safe. If it 401s, we still get an array back or null.
   var cardsUrl =
     'https://api.trello.com/1/boards/' + currentBoardId + '/cards/open' +
     '?fields=name,idList,due,dueComplete' +
-    '&actions=createCard,updateCard:idList&actions_limit=1000' +
-    '&action_fields=date,data,type' +
-    '&actionMemberCreator=true&actionMemberCreator_fields=fullName,username' +
     '&customFieldItems=true' +
     '&key=' + API_KEY + '&token=' + currentToken;
 
+  // 2) Custom field definitions — independent; failure just means empty columns.
   var fieldsUrl =
     'https://api.trello.com/1/boards/' + currentBoardId + '/customFields' +
     '?key=' + API_KEY + '&token=' + currentToken;
 
   Promise.all([
-    fetch(fieldsUrl).then(function(r) {
-      if (!r.ok) throw new Error('customFields request failed: ' + r.status);
-      return r.json();
-    }),
-    fetch(cardsUrl).then(function(r) {
-      if (!r.ok) throw new Error('cards request failed: ' + r.status);
-      return r.json();
-    })
+    safeFetchJson(cardsUrl),
+    safeFetchJson(fieldsUrl)
   ]).then(function(results) {
-    var customFields = Array.isArray(results[0]) ? results[0] : [];
-    var cards         = Array.isArray(results[1]) ? results[1] : [];
+    var cards        = Array.isArray(results[0]) ? results[0] : [];
+    var customFields = Array.isArray(results[1]) ? results[1] : [];
 
-    setExportStatus(STRINGS[currentLang].exportBuilding);
-    var rows = buildExportRows(cards, customFields, listMap);
-
-    if (!rows.length) {
+    if (!cards.length) {
+      // Cards request itself failed or board truly empty
       setExportStatus(STRINGS[currentLang].exportEmpty);
       isExporting = false;
       setExportButtonsDisabled(false);
       return;
     }
 
-    var filename = 'ListClock-export-' + formatDateFull(new Date());
-    if (format === 'csv') {
-      exportToCsv(rows, filename + '.csv');
-    } else {
-      exportToXlsx(rows, filename + '.xlsx');
-    }
+    // Only need actions for cards we'll actually export (skip ignored lists)
+    var exportCards = cards.filter(function(card) {
+      var setting = listSettings[listMap[card.idList] || ''] || {};
+      return !setting.ignore;
+    });
 
-    setExportStatus(STRINGS[currentLang].exportDone.replace('{n}', rows.length));
-    isExporting = false;
-    setExportButtonsDisabled(false);
+    // 3) Per-card actions — same proven approach as the card panel.
+    //    Each fetch is independent; one failing leaves that card's timers blank
+    //    but never breaks the export.
+    var actionsByCard = {};
+    var doneCount = 0;
+    return runInBatches(exportCards, 8, 350, function(card) {
+      var url =
+        'https://api.trello.com/1/cards/' + card.id +
+        '/actions?filter=updateCard:idList,createCard' +
+        '&memberCreator=true&memberCreator_fields=fullName,username' +
+        '&limit=1000&key=' + API_KEY + '&token=' + currentToken;
+      return safeFetchJson(url).then(function(actions) {
+        actionsByCard[card.id] = Array.isArray(actions) ? actions : [];
+        doneCount++;
+        setExportStatus(STRINGS[currentLang].exportFetching + ' (' + doneCount + '/' + exportCards.length + ')');
+      });
+    }).then(function() {
+      setExportStatus(STRINGS[currentLang].exportBuilding);
+      var rows = buildExportRows(cards, customFields, listMap, actionsByCard);
+
+      if (!rows.length) {
+        setExportStatus(STRINGS[currentLang].exportEmpty);
+        isExporting = false;
+        setExportButtonsDisabled(false);
+        return;
+      }
+
+      var filename = 'ListClock-export-' + formatDateFull(new Date());
+      if (format === 'csv') {
+        exportToCsv(rows, filename + '.csv');
+      } else {
+        exportToXlsx(rows, filename + '.xlsx');
+      }
+
+      setExportStatus(STRINGS[currentLang].exportDone.replace('{n}', rows.length));
+      isExporting = false;
+      setExportButtonsDisabled(false);
+    });
   }).catch(function(err) {
     console.error('[ListClock] export failed:', err);
     setExportStatus(STRINGS[currentLang].exportError);
