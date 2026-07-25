@@ -494,10 +494,23 @@ function exportToCsv(rows, filename) {
 }
 
 function exportToXlsx(rows, filename) {
+  // Guard: if the SheetJS script was blocked (CSP) or failed to load,
+  // XLSX will be undefined — surface a clear console message.
+  if (typeof XLSX === 'undefined') {
+    throw new Error('XLSX library not loaded (blocked by CSP or network).');
+  }
   var ws = XLSX.utils.json_to_sheet(rows);
   var wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'ListClock');
-  XLSX.writeFile(wb, filename);
+  // Build the file in memory, then reuse our own Blob download path
+  // (the same one CSV uses and that we know works) instead of
+  // XLSX.writeFile, which relies on SheetJS's internal saver.
+  var wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  downloadBlob(
+    wbout,
+    filename,
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
 }
 
 // Fetch that resolves to null on any failure instead of rejecting —
