@@ -25,7 +25,9 @@ var STRINGS = {
     exportEmpty:    'No cards found to export.',
     exportError:    'Export failed. Please try again.',
     contactTitle:   'Contact',
-    contactBtn:     'Contact Us'
+    contactBtn:     'Contact Us',
+    connectMsg:     'Connect your Trello account to load and export list data.',
+    connectBtn:     'Connect Trello Account'
   },
   tr: {
     langTitle:   'Dil',
@@ -48,7 +50,9 @@ var STRINGS = {
     exportEmpty:    'Dışa aktarılacak kart bulunamadı.',
     exportError:    'Dışa aktarma başarısız oldu. Lütfen tekrar deneyin.',
     contactTitle:   'İletişim',
-    contactBtn:     'Bize Ulaşın'
+    contactBtn:     'Bize Ulaşın',
+    connectMsg:     'Liste verilerini yükleyip dışa aktarmak için Trello hesabınızı bağlayın.',
+    connectBtn:     'Trello Hesabını Bağla'
   },
   es: {
     langTitle:   'Idioma',
@@ -71,7 +75,9 @@ var STRINGS = {
     exportEmpty:    'No se encontraron tarjetas para exportar.',
     exportError:    'Error al exportar. Inténtalo de nuevo.',
     contactTitle:   'Contacto',
-    contactBtn:     'Contáctanos'
+    contactBtn:     'Contáctanos',
+    connectMsg:     'Conecta tu cuenta de Trello para cargar y exportar los datos de las listas.',
+    connectBtn:     'Conectar Cuenta de Trello'
   },
   pt: {
     langTitle:   'Idioma',
@@ -94,7 +100,9 @@ var STRINGS = {
     exportEmpty:    'Nenhum cartão encontrado para exportar.',
     exportError:    'Falha ao exportar. Tente novamente.',
     contactTitle:   'Fale Conosco',
-    contactBtn:     'Fale Conosco'
+    contactBtn:     'Fale Conosco',
+    connectMsg:     'Conecte sua conta Trello para carregar e exportar os dados das listas.',
+    connectBtn:     'Conectar Conta Trello'
   }
 };
 
@@ -250,9 +258,33 @@ function renderLists() {
   });
 }
 
+function showConnectGate() {
+  var s = STRINGS[currentLang];
+  var container = document.getElementById('lists');
+  container.innerHTML = '';
+  var msg = document.createElement('div');
+  msg.style.cssText = 'font-size:12px;color:#5e6c84;margin-bottom:10px;';
+  msg.innerText = s.connectMsg;
+  var btn = document.createElement('button');
+  btn.className = 'save-btn';
+  btn.innerText = s.connectBtn;
+  btn.addEventListener('click', function() {
+    t.getRestApi().authorize({ scope: 'read', expiration: 'never' }).then(function() {
+      t.render(function() {});
+    });
+  });
+  container.appendChild(msg);
+  container.appendChild(btn);
+  setExportButtonsDisabled(true);
+}
+
 t.render(function() {
   var restApi = t.getRestApi();
   return restApi.getToken().then(function(token) {
+    if (!token) {
+      showConnectGate();
+      return;
+    }
     currentToken = token;
     return Promise.all([
       t.board('id'),
@@ -458,7 +490,11 @@ function exportToXlsx(rows, filename) {
 }
 
 function runExport(format) {
-  if (isExporting || !currentToken || !currentBoardId) return;
+  if (isExporting) return;
+  if (!currentToken || !currentBoardId) {
+    setExportStatus(STRINGS[currentLang].connectMsg);
+    return;
+  }
   isExporting = true;
   setExportButtonsDisabled(true);
   setExportStatus(STRINGS[currentLang].exportFetching);
