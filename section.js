@@ -15,7 +15,9 @@
       connectMsg: 'Connect your Trello account to see card timing data.',
       doneBanner: '✓ This card is in a Done list — timers are frozen.',
       ignored: 'This list is set to ignore — no tracking here.',
-      unknown: 'Unknown'
+      unknown: 'Unknown',
+      loadError: 'Could not load timing data (Trello API busy). Retrying…',
+      loadErrorFinal: 'Could not load timing data. Click to retry.'
     },
     tr: {
       currentStage: 'Mevcut Aşama', cardAge: 'Kart Yaşı',
@@ -27,7 +29,9 @@
       connectMsg: 'Kart verilerini görmek için Trello hesabınızı bağlayın.',
       doneBanner: '✓ Bu kart Tamamlandı listesinde — süreler donduruldu.',
       ignored: 'Bu liste yoksayılıyor — takip yapılmıyor.',
-      unknown: 'Bilinmiyor'
+      unknown: 'Bilinmiyor',
+      loadError: 'Veriler yüklenemedi (Trello API meşgul). Tekrar deneniyor…',
+      loadErrorFinal: 'Veriler yüklenemedi. Tekrar denemek için tıklayın.'
     },
     es: {
       currentStage: 'Etapa Actual', cardAge: 'Edad de la Tarjeta',
@@ -39,7 +43,9 @@
       connectMsg: 'Conecta tu cuenta de Trello para ver los datos de tiempo.',
       doneBanner: '✓ Esta tarjeta está en una lista Done — los temporizadores están congelados.',
       ignored: 'Esta lista está configurada para ignorar — sin seguimiento.',
-      unknown: 'Desconocido'
+      unknown: 'Desconocido',
+      loadError: 'No se pudieron cargar los datos (API de Trello ocupada). Reintentando…',
+      loadErrorFinal: 'No se pudieron cargar los datos. Haz clic para reintentar.'
     },
     pt: {
       currentStage: 'Etapa Atual', cardAge: 'Idade do Cartão',
@@ -51,7 +57,9 @@
       connectMsg: 'Conecte sua conta Trello para ver os dados de tempo.',
       doneBanner: '✓ Este cartão está em uma lista Done — os temporizadores estão congelados.',
       ignored: 'Esta lista está configurada para ignorar — sem rastreamento.',
-      unknown: 'Desconhecido'
+      unknown: 'Desconhecido',
+      loadError: 'Não foi possível carregar os dados (API do Trello ocupada). Tentando novamente…',
+      loadErrorFinal: 'Não foi possível carregar os dados. Clique para tentar novamente.'
     }
   };
 
@@ -119,24 +127,45 @@
         return;
       }
 
-      return fetch(
-        'https://api.trello.com/1/cards/' + card.id +
+      var actionsUrl = 'https://api.trello.com/1/cards/' + card.id +
         '/actions?filter=updateCard:idList,createCard,commentCard,addMemberToCard' +
         '&memberCreator=true&memberCreator_fields=fullName,username' +
-        '&key=' + API_KEY + '&token=' + token
-      )
-      .then(function(r) { return r.json(); })
-      .then(function(actions) {
-        if (!actions || !actions.length) {
-          document.getElementById('root').innerHTML =
-            '<div style="font-size:12px;color:#5e6c84;padding:16px">' + L.noData + '</div>';
-          t.sizeTo('#root');
-          return;
-        }
-        // Pass currentListName so we can use it as fallback for Unknown
-        renderPanel(actions, isDone, L, currentListName);
-      });
+        '&key=' + API_KEY + '&token=' + token;
+
+      return fetchJsonWithRetry(actionsUrl)
+        .then(function(actions) {
+          if (!actions || !actions.length) {
+            document.getElementById('root').innerHTML =
+              '<div style="font-size:12px;color:#5e6c84;padding:16px">' + L.noData + '</div>';
+            t.sizeTo('#root');
+            return;
+          }
+          // Pass currentListName so we can use it as fallback for Unknown
+          renderPanel(actions, isDone, L, currentListName);
+        })
+        .catch(function(err) {
+          // Previously an unhandled rejection here just left the panel blank
+          // with no explanation. Show a message and let the user retry
+          // instead of it silently "not calculating".
+          console.warn('ListClock: failed to load card actions', err);
+          showLoadError(L, function() { loadCard(token, L); });
+        });
     });
+  }
+
+  function showLoadError(L, onRetry) {
+    var root = document.getElementById('root');
+    root.innerHTML = '';
+    var wrap = el('div', 'padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;');
+    var msg = el('div', 'font-size:12px;color:#bf2600;margin-bottom:10px;');
+    msg.innerText = '⚠ ' + L.loadErrorFinal;
+    var btn = el('button', 'background:#f4f5f7;color:#172b4d;border:1px solid #dfe1e6;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer');
+    btn.innerText = '↻';
+    btn.addEventListener('click', onRetry);
+    wrap.appendChild(msg);
+    wrap.appendChild(btn);
+    root.appendChild(wrap);
+    t.sizeTo('#root');
   }
 
   function renderPanel(actions, isDone, L, currentListName) {
@@ -398,6 +427,29 @@
 
   function escHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Wraps fetch() with 429/5xx retry + backoff. Refreshing the board fires a
+  // burst of badge requests for every card at once; if the open card's own
+  // request lands in that same burst it used to fail with no retry and no
+  // error shown, leaving the panel blank. This gives it a couple of chances
+  // to recover before surfacing an error.
+  function fetchJsonWithRetry(url, retriesLeft) {
+    retriesLeft = (typeof retriesLeft === 'number') ? retriesLeft : 2;
+    return fetch(url).then(function(r) {
+      if (r.status === 429 || (r.status >= 500 && r.status < 600)) {
+        if (retriesLeft > 0) {
+          var retryAfterHeader = parseInt(r.headers.get('Retry-After'), 10);
+          var waitMs = (retryAfterHeader > 0 ? retryAfterHeader * 1000 : 800) +
+            Math.floor(Math.random() * 300);
+          return new Promise(function(resolve) { setTimeout(resolve, waitMs); })
+            .then(function() { return fetchJsonWithRetry(url, retriesLeft - 1); });
+        }
+        throw new Error('Trello API rate-limited/unavailable: ' + r.status);
+      }
+      if (!r.ok) throw new Error('Trello API error: ' + r.status);
+      return r.json();
+    });
   }
 
 })();
