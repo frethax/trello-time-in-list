@@ -40,19 +40,17 @@ TrelloPowerUp.initialize({
             return [{ text: '✓ Done', color: 'green', refresh: 86400 }];
           }
 
-          return fetch(
+          return fetchJsonWithRetry(
             'https://api.trello.com/1/cards/' + card.id +
             '/actions?filter=updateCard:idList&limit=1&key=' + API_KEY + '&token=' + token
           )
-          .then(function(r) { return r.json(); })
           .then(function(data) {
             var dateStr = (data && data.length) ? data[0].date : null;
             if (!dateStr) {
-              return fetch(
+              return fetchJsonWithRetry(
                 'https://api.trello.com/1/cards/' + card.id +
                 '/actions?filter=createCard&limit=1&key=' + API_KEY + '&token=' + token
               )
-              .then(function(r) { return r.json(); })
               .then(function(cdata) {
                 if (cdata && cdata.length) return makeBadge(cdata[0].date, setting.threshold);
                 return [];
@@ -62,7 +60,13 @@ TrelloPowerUp.initialize({
           });
         });
       })
-      .catch(function() { return []; });
+      .catch(function(err) {
+        // Don't silently blank the badge on a failed/rate-limited request —
+        // surface a short-lived placeholder so Trello re-invokes this soon
+        // and the badge self-heals without the user needing to notice/retry.
+        console.warn('ListClock: card-badges failed, will retry shortly', err);
+        return [{ text: '…', color: 'light-gray', refresh: 20 }];
+      });
   },
 
   'board-buttons': function(t, options) {
@@ -93,6 +97,27 @@ TrelloPowerUp.initialize({
   authorizeButton: true,
   scope: { read: true }
 });
+
+// Wraps fetch() with 429/5xx retry + backoff so a burst of simultaneous
+// card-badge requests (e.g. right after a board refresh) doesn't just fail
+// once and go silent. Honors Retry-After when Trello sends it.
+function fetchJsonWithRetry(url, retriesLeft) {
+  retriesLeft = (typeof retriesLeft === 'number') ? retriesLeft : 2;
+  return fetch(url).then(function(r) {
+    if (r.status === 429 || (r.status >= 500 && r.status < 600)) {
+      if (retriesLeft > 0) {
+        var retryAfterHeader = parseInt(r.headers.get('Retry-After'), 10);
+        var waitMs = (retryAfterHeader > 0 ? retryAfterHeader * 1000 : 800) +
+          Math.floor(Math.random() * 300); // jitter so parallel cards don't retry in lockstep
+        return new Promise(function(resolve) { setTimeout(resolve, waitMs); })
+          .then(function() { return fetchJsonWithRetry(url, retriesLeft - 1); });
+      }
+      throw new Error('Trello API rate-limited/unavailable: ' + r.status);
+    }
+    if (!r.ok) throw new Error('Trello API error: ' + r.status);
+    return r.json();
+  });
+}
 
 function makeBadge(dateStr, threshold) {
   var diff = Date.now() - new Date(dateStr);
