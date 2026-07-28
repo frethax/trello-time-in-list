@@ -65,7 +65,10 @@ TrelloPowerUp.initialize({
         // surface a short-lived placeholder so Trello re-invokes this soon
         // and the badge self-heals without the user needing to notice/retry.
         console.warn('ListClock: card-badges failed, will retry shortly', err);
-        return [{ text: '…', color: 'light-gray', refresh: 20 }];
+        // Randomized refresh (15-45s) so cards that failed together don't
+        // all re-poll at the exact same moment and recreate the burst.
+        var desyncedRefresh = 15 + Math.floor(Math.random() * 30);
+        return [{ text: '…', color: 'light-gray', refresh: desyncedRefresh }];
       });
   },
 
@@ -98,19 +101,55 @@ TrelloPowerUp.initialize({
   scope: { read: true }
 });
 
-// Wraps fetch() with 429/5xx retry + backoff so a burst of simultaneous
-// card-badge requests (e.g. right after a board refresh) doesn't just fail
-// once and go silent. Honors Retry-After when Trello sends it.
+// ---- Request queue -------------------------------------------------------
+// 'card-badges' is invoked once per visible card, all within this same
+// connector.js execution context (it's one shared iframe, not one per card).
+// On board refresh Trello fires all of those near-simultaneously, so with N
+// cards we were sending N (sometimes 2N) fetches to api.trello.com at once,
+// blowing through Trello's per-token rate limit. Retry-with-backoff alone
+// didn't fix it because a big enough burst makes *every* retry collide too.
+// Capping how many requests are in flight at once (independent of how many
+// cards are asking) fixes it at the source.
+var MAX_CONCURRENT_REQUESTS = 3;
+var activeRequestCount = 0;
+var requestQueue = [];
+
+function pumpQueue() {
+  while (activeRequestCount < MAX_CONCURRENT_REQUESTS && requestQueue.length) {
+    var job = requestQueue.shift();
+    activeRequestCount++;
+    doFetchWithRetry(job.url, job.retriesLeft)
+      .then(job.resolve, job.reject)
+      .then(function() {
+        activeRequestCount--;
+        pumpQueue();
+      });
+  }
+}
+
+// Public entry point: queues the request instead of firing it immediately.
 function fetchJsonWithRetry(url, retriesLeft) {
-  retriesLeft = (typeof retriesLeft === 'number') ? retriesLeft : 2;
+  return new Promise(function(resolve, reject) {
+    requestQueue.push({
+      url: url,
+      retriesLeft: (typeof retriesLeft === 'number') ? retriesLeft : 3,
+      resolve: resolve,
+      reject: reject
+    });
+    pumpQueue();
+  });
+}
+
+// Does the actual fetch + 429/5xx retry w/ backoff. Honors Retry-After.
+function doFetchWithRetry(url, retriesLeft) {
   return fetch(url).then(function(r) {
     if (r.status === 429 || (r.status >= 500 && r.status < 600)) {
       if (retriesLeft > 0) {
         var retryAfterHeader = parseInt(r.headers.get('Retry-After'), 10);
-        var waitMs = (retryAfterHeader > 0 ? retryAfterHeader * 1000 : 800) +
-          Math.floor(Math.random() * 300); // jitter so parallel cards don't retry in lockstep
+        var waitMs = (retryAfterHeader > 0 ? retryAfterHeader * 1000 : 1200) +
+          Math.floor(Math.random() * 600); // jitter so parallel cards don't retry in lockstep
         return new Promise(function(resolve) { setTimeout(resolve, waitMs); })
-          .then(function() { return fetchJsonWithRetry(url, retriesLeft - 1); });
+          .then(function() { return doFetchWithRetry(url, retriesLeft - 1); });
       }
       throw new Error('Trello API rate-limited/unavailable: ' + r.status);
     }
