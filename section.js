@@ -435,13 +435,13 @@
   // error shown, leaving the panel blank. This gives it a couple of chances
   // to recover before surfacing an error.
   function fetchJsonWithRetry(url, retriesLeft) {
-    retriesLeft = (typeof retriesLeft === 'number') ? retriesLeft : 2;
+    retriesLeft = (typeof retriesLeft === 'number') ? retriesLeft : 3;
     return fetch(url).then(function(r) {
       if (r.status === 429 || (r.status >= 500 && r.status < 600)) {
         if (retriesLeft > 0) {
           var retryAfterHeader = parseInt(r.headers.get('Retry-After'), 10);
-          var waitMs = (retryAfterHeader > 0 ? retryAfterHeader * 1000 : 800) +
-            Math.floor(Math.random() * 300);
+          var waitMs = (retryAfterHeader > 0 ? retryAfterHeader * 1000 : 1200) +
+            Math.floor(Math.random() * 600);
           return new Promise(function(resolve) { setTimeout(resolve, waitMs); })
             .then(function() { return fetchJsonWithRetry(url, retriesLeft - 1); });
         }
