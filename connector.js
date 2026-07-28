@@ -18,7 +18,8 @@ TrelloPowerUp.initialize({
 
   'card-badges': function(t, options) {
     var restApi = t.getRestApi();
-    return restApi.getToken()
+
+    var work = restApi.getToken()
       .then(function(token) {
         if (!token) return [];
         return Promise.all([
@@ -40,22 +41,19 @@ TrelloPowerUp.initialize({
             return [{ text: '✓ Done', color: 'green', refresh: 86400 }];
           }
 
+          // Single request instead of two sequential ones: ask for whichever
+          // is more recent, the last "moved to this list" or the "card
+          // created" action. If the card has ever moved, that move is
+          // necessarily the newer of the two, so this is equivalent to the
+          // old "try move, fall back to create" logic but at half the API
+          // traffic — which was the actual source of the rate-limit bursts.
           return fetchJsonWithRetry(
             'https://api.trello.com/1/cards/' + card.id +
-            '/actions?filter=updateCard:idList&limit=1&key=' + API_KEY + '&token=' + token
+            '/actions?filter=updateCard:idList,createCard&limit=1&key=' + API_KEY + '&token=' + token
           )
           .then(function(data) {
             var dateStr = (data && data.length) ? data[0].date : null;
-            if (!dateStr) {
-              return fetchJsonWithRetry(
-                'https://api.trello.com/1/cards/' + card.id +
-                '/actions?filter=createCard&limit=1&key=' + API_KEY + '&token=' + token
-              )
-              .then(function(cdata) {
-                if (cdata && cdata.length) return makeBadge(cdata[0].date, setting.threshold);
-                return [];
-              });
-            }
+            if (!dateStr) return [];
             return makeBadge(dateStr, setting.threshold);
           });
         });
@@ -65,11 +63,16 @@ TrelloPowerUp.initialize({
         // surface a short-lived placeholder so Trello re-invokes this soon
         // and the badge self-heals without the user needing to notice/retry.
         console.warn('ListClock: card-badges failed, will retry shortly', err);
-        // Randomized refresh (15-45s) so cards that failed together don't
-        // all re-poll at the exact same moment and recreate the burst.
-        var desyncedRefresh = 15 + Math.floor(Math.random() * 30);
-        return [{ text: '…', color: 'light-gray', refresh: desyncedRefresh }];
+        return retryPlaceholderBadge();
       });
+
+    // Belt-and-suspenders: guarantee this capability call resolves quickly
+    // no matter what. On a board with many cards, a backed-up request queue
+    // could otherwise leave this promise pending long enough that Trello
+    // gives up waiting and shows nothing at all — which looked like "badges
+    // appeared, then all vanished". Racing against a timeout means every
+    // card always gets *something* back: real data, or a retry placeholder.
+    return withTimeout(work, 9000, retryPlaceholderBadge());
   },
 
   'board-buttons': function(t, options) {
@@ -105,14 +108,25 @@ TrelloPowerUp.initialize({
 // 'card-badges' is invoked once per visible card, all within this same
 // connector.js execution context (it's one shared iframe, not one per card).
 // On board refresh Trello fires all of those near-simultaneously, so with N
-// cards we were sending N (sometimes 2N) fetches to api.trello.com at once,
-// blowing through Trello's per-token rate limit. Retry-with-backoff alone
-// didn't fix it because a big enough burst makes *every* retry collide too.
-// Capping how many requests are in flight at once (independent of how many
-// cards are asking) fixes it at the source.
-var MAX_CONCURRENT_REQUESTS = 3;
+// cards we were sending N fetches to api.trello.com at once, blowing through
+// Trello's per-token rate limit. Retry-with-backoff alone didn't fix it
+// because a big enough burst makes *every* retry collide too. Capping how
+// many requests are in flight at once (independent of how many cards are
+// asking) fixes it at the source.
+//
+// Two extra safety nets on top of the queue itself:
+//  - in-flight de-dup: if Trello re-invokes card-badges for a card whose
+//    previous call is still queued/running, we reuse that same promise
+//    instead of enqueueing a second job. Without this, a slow-draining
+//    queue causes each re-poll to add more jobs than it removes, so the
+//    queue grows without bound and nothing ever finishes in time — which is
+//    what made *every* badge disappear rather than just the slow ones.
+//  - withTimeout() below, so a single capability call can never hang the
+//    whole card indefinitely even if it's stuck deep in the queue.
+var MAX_CONCURRENT_REQUESTS = 4;
 var activeRequestCount = 0;
 var requestQueue = [];
+var pendingByUrl = {};
 
 function pumpQueue() {
   while (activeRequestCount < MAX_CONCURRENT_REQUESTS && requestQueue.length) {
@@ -127,17 +141,25 @@ function pumpQueue() {
   }
 }
 
-// Public entry point: queues the request instead of firing it immediately.
+// Public entry point: queues the request (or joins an identical one already
+// in flight) instead of firing it immediately.
 function fetchJsonWithRetry(url, retriesLeft) {
-  return new Promise(function(resolve, reject) {
+  if (pendingByUrl[url]) return pendingByUrl[url];
+
+  var p = new Promise(function(resolve, reject) {
     requestQueue.push({
       url: url,
-      retriesLeft: (typeof retriesLeft === 'number') ? retriesLeft : 3,
+      retriesLeft: (typeof retriesLeft === 'number') ? retriesLeft : 2,
       resolve: resolve,
       reject: reject
     });
     pumpQueue();
   });
+
+  pendingByUrl[url] = p;
+  var clear = function() { delete pendingByUrl[url]; };
+  p.then(clear, clear);
+  return p;
 }
 
 // Does the actual fetch + 429/5xx retry w/ backoff. Honors Retry-After.
@@ -156,6 +178,29 @@ function doFetchWithRetry(url, retriesLeft) {
     if (!r.ok) throw new Error('Trello API error: ' + r.status);
     return r.json();
   });
+}
+
+// Races `promise` against a timeout; if it doesn't settle in `ms`,
+// resolves (not rejects) with `fallbackValue` instead. The original promise
+// is left running in the background — if it finishes late it just updates
+// pendingByUrl/queue bookkeeping, its result is simply not waited on here.
+function withTimeout(promise, ms, fallbackValue) {
+  return new Promise(function(resolve) {
+    var settled = false;
+    var timer = setTimeout(function() {
+      if (!settled) { settled = true; resolve(fallbackValue); }
+    }, ms);
+    promise.then(
+      function(value) { if (!settled) { settled = true; clearTimeout(timer); resolve(value); } },
+      function()      { if (!settled) { settled = true; clearTimeout(timer); resolve(fallbackValue); } }
+    );
+  });
+}
+
+// Randomized refresh (15-45s) so cards that failed/timed out together don't
+// all re-poll at the exact same moment and recreate the burst.
+function retryPlaceholderBadge() {
+  return [{ text: '…', color: 'light-gray', refresh: 15 + Math.floor(Math.random() * 30) }];
 }
 
 function makeBadge(dateStr, threshold) {
