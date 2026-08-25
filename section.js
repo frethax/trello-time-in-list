@@ -17,7 +17,9 @@
       ignored: 'This list is set to ignore — no tracking here.',
       unknown: 'Unknown',
       loadError: 'Could not load timing data (Trello API busy). Retrying…',
-      loadErrorFinal: 'Could not load timing data. Click to retry.'
+      loadErrorFinal: 'Could not load timing data. Click to retry.',
+      relatedCards: 'Related Cards',
+      noRelated: 'No related cards. Attach another card on this board to link it here.'
     },
     tr: {
       currentStage: 'Mevcut Aşama', cardAge: 'Kart Yaşı',
@@ -31,7 +33,9 @@
       ignored: 'Bu liste yoksayılıyor — takip yapılmıyor.',
       unknown: 'Bilinmiyor',
       loadError: 'Veriler yüklenemedi (Trello API meşgul). Tekrar deneniyor…',
-      loadErrorFinal: 'Veriler yüklenemedi. Tekrar denemek için tıklayın.'
+      loadErrorFinal: 'Veriler yüklenemedi. Tekrar denemek için tıklayın.',
+      relatedCards: 'İlişkili Kartlar',
+      noRelated: 'İlişkili kart yok. Bu board\'daki bir kartı buraya bağlamak için karta ekleyin (Attachment → Card).'
     },
     es: {
       currentStage: 'Etapa Actual', cardAge: 'Edad de la Tarjeta',
@@ -45,7 +49,9 @@
       ignored: 'Esta lista está configurada para ignorar — sin seguimiento.',
       unknown: 'Desconocido',
       loadError: 'No se pudieron cargar los datos (API de Trello ocupada). Reintentando…',
-      loadErrorFinal: 'No se pudieron cargar los datos. Haz clic para reintentar.'
+      loadErrorFinal: 'No se pudieron cargar los datos. Haz clic para reintentar.',
+      relatedCards: 'Tarjetas Relacionadas',
+      noRelated: 'No hay tarjetas relacionadas. Adjunta otra tarjeta de este tablero para enlazarla aquí.'
     },
     pt: {
       currentStage: 'Etapa Atual', cardAge: 'Idade do Cartão',
@@ -59,9 +65,56 @@
       ignored: 'Esta lista está configurada para ignorar — sem rastreamento.',
       unknown: 'Desconhecido',
       loadError: 'Não foi possível carregar os dados (API do Trello ocupada). Tentando novamente…',
-      loadErrorFinal: 'Não foi possível carregar os dados. Clique para tentar novamente.'
+      loadErrorFinal: 'Não foi possível carregar os dados. Clique para tentar novamente.',
+      relatedCards: 'Cartões Relacionados',
+      noRelated: 'Nenhum cartão relacionado. Anexe outro cartão deste quadro para vinculá-lo aqui.'
     }
   };
+
+  // Shared palette + stable hash so a given list always maps to the same
+  // color everywhere it's shown (timeline, history, related cards) —
+  // independent of the order lists happen to appear in.
+  var COLORS = ['#0052cc','#2ea043','#f2cc60','#db61a2','#ff7b72'];
+  function colorForList(name) {
+    var hash = 0;
+    name = name || '';
+    for (var i = 0; i < name.length; i++) {
+      hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+    }
+    return COLORS[hash % COLORS.length];
+  }
+
+  // Matches Trello card links, e.g. https://trello.com/c/AbC123ef/17-task-name
+  var CARD_URL_RE = /^https?:\/\/trello\.com\/c\/([a-zA-Z0-9]+)(?:[\/?#].*)?$/i;
+
+  // Reads the current card's attachments and keeps only the ones that are
+  // links to other cards on THIS board (native Trello "Attach → Card" flow).
+  // Cross-board links and non-card attachments are skipped by design — see
+  // decision to scope this to same-board only.
+  function buildRelatedCards(card, boardCards, lists) {
+    var attachments = (card && card.attachments) || [];
+    var seen = {};
+    var related = [];
+    attachments.forEach(function(att) {
+      if (!att || !att.url) return;
+      var m = CARD_URL_RE.exec(att.url);
+      if (!m) return;
+      var shortLink = m[1];
+      if (card.shortLink && shortLink === card.shortLink) return; // guard against self-link
+      if (seen[shortLink]) return;
+      var match = boardCards.find(function(c) { return c.shortLink === shortLink; });
+      if (!match || match.closed) return; // not on this board (or archived) — out of scope for now
+      seen[shortLink] = true;
+      var listObj = lists.find(function(l) { return l.id === match.idList; });
+      related.push({
+        id: match.id,
+        shortLink: match.shortLink,
+        name: match.name,
+        listName: listObj ? listObj.name : ''
+      });
+    });
+    return related;
+  }
 
   var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'ListClock' });
 
@@ -107,18 +160,24 @@
 
   function loadCard(token, L) {
     return Promise.all([
-      t.card('id', 'idList'),
+      t.card('id', 'idList', 'attachments', 'shortLink'),
       t.get('board', 'shared', 'listSettings'),
-      t.lists('id', 'name')
+      t.lists('id', 'name'),
+      // All cards on this board, via the Power-Up SDK (not a REST call) —
+      // no extra API traffic/rate-limit exposure, just used to resolve
+      // which board card a "Related Cards" attachment link points to.
+      t.cards('id', 'name', 'idList', 'shortLink', 'closed')
     ]).then(function(results) {
       var card         = results[0];
       var listSettings = results[1] || {};
       var lists        = results[2] || [];
+      var boardCards   = results[3] || [];
       var currentListObj  = lists.find(function(l) { return l.id === card.idList; });
       var currentListName = currentListObj ? currentListObj.name : '';
       var setting  = listSettings[currentListName] || {};
       var isDone   = setting.done   || false;
       var isIgnore = setting.ignore || false;
+      var relatedCards = buildRelatedCards(card, boardCards, lists);
 
       if (isIgnore) {
         document.getElementById('root').innerHTML =
@@ -138,10 +197,11 @@
             document.getElementById('root').innerHTML =
               '<div style="font-size:12px;color:#5e6c84;padding:16px">' + L.noData + '</div>';
             t.sizeTo('#root');
+            renderRelatedCards(relatedCards, L);
             return;
           }
           // Pass currentListName so we can use it as fallback for Unknown
-          renderPanel(actions, isDone, L, currentListName);
+          renderPanel(actions, isDone, L, currentListName, relatedCards);
         })
         .catch(function(err) {
           // Previously an unhandled rejection here just left the panel blank
@@ -168,7 +228,7 @@
     t.sizeTo('#root');
   }
 
-  function renderPanel(actions, isDone, L, currentListName) {
+  function renderPanel(actions, isDone, L, currentListName, relatedCards) {
     var ordered      = actions.slice().reverse();
     var moveActions  = ordered.filter(function(a){ return a.data && a.data.listAfter; });
     var createAction = ordered.find(function(a){ return a.type === 'createCard'; });
@@ -212,9 +272,8 @@
     var totals     = buildTotals(timeline);
     var listKeys   = Object.keys(totals);
     var grandTotal = listKeys.reduce(function(s, k){ return s + totals[k]; }, 0);
-    var COLORS     = ['#0052cc','#2ea043','#f2cc60','#db61a2','#ff7b72'];
     var colorMap   = {};
-    listKeys.forEach(function(list, i){ colorMap[list] = COLORS[i % COLORS.length]; });
+    listKeys.forEach(function(list){ colorMap[list] = colorForList(list); });
 
     var root = document.getElementById('root');
     root.innerHTML = '';
@@ -365,6 +424,60 @@
     wrap.appendChild(left);
     wrap.appendChild(right);
     root.appendChild(wrap);
+    renderRelatedCards(relatedCards, L);
+  }
+
+  // Renders the "Related Cards" block underneath the two-column panel —
+  // one row per card linked via Trello's native card-attachment ("Attach →
+  // Card") flow, showing that card's name and which list/column it's
+  // currently in (same color as the rest of the panel for that list).
+  function renderRelatedCards(relatedCards, L) {
+    var root = document.getElementById('root');
+    var section = el('div', 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f4f5f7;border:1px solid #dfe1e6;border-radius:8px;padding:12px;margin:8px 2px 8px 2px;');
+
+    var title = el('div', 'font-size:9px;font-weight:700;color:#97a0af;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;');
+    title.innerText = L.relatedCards + (relatedCards && relatedCards.length ? ' (' + relatedCards.length + ')' : '');
+    section.appendChild(title);
+
+    if (!relatedCards || !relatedCards.length) {
+      var empty = el('div', 'font-size:11px;color:#97a0af;');
+      empty.innerText = L.noRelated;
+      section.appendChild(empty);
+    } else {
+      relatedCards.forEach(function(rc, idx) {
+        var row = el('a', 'display:flex;align-items:center;justify-content:space-between;gap:8px;text-decoration:none;padding:6px 0;' +
+          (idx < relatedCards.length - 1 ? 'border-bottom:1px solid #dfe1e6;' : ''));
+        row.href = 'https://trello.com/c/' + rc.shortLink;
+        row.target = '_blank';
+        row.rel = 'noopener';
+
+        var left = el('div', 'display:flex;align-items:center;gap:8px;min-width:0;');
+        var dot = el('span', 'width:8px;height:8px;border-radius:50%;flex-shrink:0;background:' + colorForList(rc.listName) + ';');
+        var name = el('span', 'font-size:12px;font-weight:600;color:#172b4d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;');
+        name.innerText = rc.name;
+        left.appendChild(dot);
+        left.appendChild(name);
+
+        var listPill = el('span', 'font-size:10px;color:#5e6c84;background:#dfe1e6;border-radius:10px;padding:2px 8px;flex-shrink:0;white-space:nowrap;');
+        listPill.innerText = rc.listName || L.unknown;
+
+        row.appendChild(left);
+        row.appendChild(listPill);
+
+        // Prefer in-app navigation when the client library supports it;
+        // fall back to the plain link (target=_blank) otherwise.
+        row.addEventListener('click', function(e) {
+          if (typeof t.showCard === 'function') {
+            e.preventDefault();
+            t.showCard(rc.id);
+          }
+        });
+
+        section.appendChild(row);
+      });
+    }
+
+    root.appendChild(section);
     t.sizeTo('#root');
   }
 
