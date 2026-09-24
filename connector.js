@@ -250,6 +250,7 @@ function formatTime(ms) {
 // Writes need a token with write scope; with a read-only token the first
 // 401 disables writing for this session (badge still shows the number).
 var numberWriteDenied = false;
+var numberWritePausedUntil = 0; // set after a 429 so background writes back off
 var numberSyncInFlight = {};
 var numberSyncedAt = {};
 var writeQueue = [];
@@ -258,7 +259,8 @@ var MAX_CONCURRENT_WRITES = 2;
 
 function maybeSyncCardNumber(t, card, label, position, lang) {
   if (numberWriteDenied) return;
-  if (kbHasCorrectNumber(card.desc, label, position)) return;
+  if (Date.now() < numberWritePausedUntil) return;
+  if (kbHasCorrectNumber(card.desc, label, position, lang)) return;
   if (numberSyncInFlight[card.id]) return;
   // t.card() can be stale right after our own write — don't re-check a
   // card we synced in the last 60s.
@@ -286,11 +288,12 @@ function syncCardNumber(cardId, label, position, lang, token) {
     return r.ok ? r.json() : null;
   }).then(function(fresh) {
     if (!fresh || numberWriteDenied) return;
-    if (kbHasCorrectNumber(fresh.desc, label, position)) return;
+    if (kbHasCorrectNumber(fresh.desc, label, position, lang)) return;
     var desc = kbApplyNumber(fresh.desc, label, position, lang);
     if (desc.length > 16384) return; // Trello's description limit
     return kbPutDesc(API_KEY, token, cardId, desc).then(function(res) {
       if (res.status === 401) numberWriteDenied = true;
+      if (res.status === 429) numberWritePausedUntil = Date.now() + 60000;
       if (!res.ok) console.warn('Kanbrain: could not write number to card', cardId, res.status);
     });
   });

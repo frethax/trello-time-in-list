@@ -1131,7 +1131,14 @@ function runNumbering(mode, token) {
   setNumButtonsDisabled(true);
   setNumStatus(numStr('numWorking', { d: 0, n: '…' }));
 
-  return boardPromise.then(function(board) {
+  // Use the *saved* board language (the one the badge connector uses), not
+  // an unsaved selection in this modal — otherwise the two would keep
+  // rewriting each other's notes.
+  var noteLang = 'en';
+  return t.get('board', 'shared', 'language').then(function(l) {
+    noteLang = l || 'en';
+    return boardPromise;
+  }).then(function(board) {
     currentBoardId = board.id;
     return fetch('https://api.trello.com/1/boards/' + board.id +
                  '/cards/open?fields=desc,idShort&key=' + API_KEY + '&token=' + token)
@@ -1140,18 +1147,19 @@ function runNumbering(mode, token) {
     var cfg = numberingCfg;
     var todo = cards.filter(function(c) {
       if (mode === 'remove') return kbHasNumber(c.desc);
-      return !kbHasCorrectNumber(c.desc, kbNumberLabel(cfg.prefix, c.idShort), cfg.position);
+      return !kbHasCorrectNumber(c.desc, kbNumberLabel(cfg.prefix, c.idShort), cfg.position, noteLang);
     });
     if (!todo.length) {
       setNumStatus(mode === 'remove' ? numStr('numRemoved', { n: 0 }) : numStr('numUpToDate'));
       return;
     }
     var done = 0, ok = 0, failed = 0, lastStatus = 0;
-    // 4 writes per 600ms ≈ 67 req/10s — safely under Trello's 100/10s cap.
-    return runInBatches(todo, 4, 600, function(c) {
+    // One write at a time with a gap: the board's own badge requests share
+    // the same rate limit, so bulk writes must leave plenty of headroom.
+    return runInBatches(todo, 1, 400, function(c) {
       var desc = mode === 'remove'
         ? kbRemoveNumber(c.desc)
-        : kbApplyNumber(c.desc, kbNumberLabel(cfg.prefix, c.idShort), cfg.position, currentLang);
+        : kbApplyNumber(c.desc, kbNumberLabel(cfg.prefix, c.idShort), cfg.position, noteLang);
       if (desc.length > 16384) { done++; return Promise.resolve(); }
       return kbPutDesc(API_KEY, token, c.id, desc).then(function(res) {
         done++;

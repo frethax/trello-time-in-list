@@ -1,7 +1,17 @@
 /* ---- numbering.js — Kanbrain card numbering helpers (shared) ---- */
 /* Loaded by index.html (connector) and settings.html. No dependencies. */
 
-var KB_NUM_NOTE = 'Added by Kanbrain. Used for search, please do not delete.';
+// Note line, written in the board's selected language (plain text, no italics).
+var KB_NUM_NOTES = {
+  en: 'Added by Kanbrain. Used for search, please do not delete.',
+  tr: 'Kanbrain tarafından eklendi. Aramada kullanılır, lütfen silmeyin.',
+  es: 'Añadido por Kanbrain. Se usa para buscar, por favor no lo borres.',
+  pt: 'Adicionado pelo Kanbrain. Usado na busca, por favor não apague.'
+};
+
+function kbNote(lang) {
+  return KB_NUM_NOTES[lang] || KB_NUM_NOTES.en;
+}
 
 // Tolerant matcher: accepts any note line (old italic/localized ones too),
 // collapsed/expanded blank lines and longer --- rules.
@@ -57,7 +67,7 @@ function kbSearchToken(label) {
 function kbBuildBlock(label, lang) {
   // Blank line before the closing --- is required: without it Trello's
   // markdown turns the note line into an H2 (setext heading).
-  return '---\n🔢 **' + label + '** · ' + kbSearchToken(label) + '\n' + KB_NUM_NOTE + '\n\n---';
+  return '---\n🔢 **' + label + '** · ' + kbSearchToken(label) + '\n' + kbNote(lang) + '\n\n---';
 }
 
 function kbRemoveNumber(desc) {
@@ -80,17 +90,17 @@ function kbApplyNumber(desc, label, position, lang) {
     : clean + '\n\n' + block;
 }
 
-// True when the card already carries the right label in the right place.
-// Deliberately ignores the note text / exact whitespace so a language
-// switch or Trello's own markdown normalization never triggers rewrites.
-function kbHasCorrectNumber(desc, label, position) {
+// True when the card already carries the right label, search token and
+// note (in the board language) in the right place. Exact whitespace is
+// ignored so Trello's own markdown normalization never triggers rewrites.
+function kbHasCorrectNumber(desc, label, position, lang) {
   var d = String(desc || '');
   var m = d.match(KB_NUM_RE);
   if (!m || m[1].trim() !== label) return false;
   // older blocks had no search token -> treat as outdated so they get upgraded
   if (m[2].indexOf(kbSearchToken(label)) === -1) return false;
-  // older blocks had a localized / italic note -> upgrade to plain English
-  if (m[3].trim() !== KB_NUM_NOTE) return false;
+  // note must match the board language (also upgrades old italic notes)
+  if (m[3].trim() !== kbNote(lang)) return false;
   var before = d.slice(0, m.index).trim();
   var after  = d.slice(m.index + m[0].length).trim();
   if (position === 'top') return before === '';
@@ -113,8 +123,11 @@ function kbColorHex(id) {
 // Write a card description. Sent as a form-encoded body (the format
 // Trello's own client library uses) and verified against the response,
 // so a request that "succeeds" without actually saving is reported as a
-// failure. Resolves to { ok: bool, status: number }.
-function kbPutDesc(apiKey, token, cardId, desc, retried) {
+// failure. On 429 (rate limit) it waits — honoring Retry-After, else
+// 2s, 4s, 8s, 16s — and retries up to 4 times.
+// Resolves to { ok: bool, status: number }.
+function kbPutDesc(apiKey, token, cardId, desc, attempt) {
+  attempt = attempt || 0;
   var body = new URLSearchParams();
   body.set('desc', desc);
   return fetch('https://api.trello.com/1/cards/' + cardId + '?key=' + apiKey + '&token=' + token, {
@@ -122,9 +135,11 @@ function kbPutDesc(apiKey, token, cardId, desc, retried) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
     body: body.toString()
   }).then(function(r) {
-    if (r.status === 429 && !retried) {
-      return new Promise(function(res) { setTimeout(res, 1500); })
-        .then(function() { return kbPutDesc(apiKey, token, cardId, desc, true); });
+    if ((r.status === 429 || r.status >= 500) && attempt < 4) {
+      var ra = parseInt(r.headers.get('Retry-After'), 10);
+      var wait = ra > 0 ? ra * 1000 : 2000 * Math.pow(2, attempt);
+      return new Promise(function(res) { setTimeout(res, wait + Math.floor(Math.random() * 500)); })
+        .then(function() { return kbPutDesc(apiKey, token, cardId, desc, attempt + 1); });
     }
     if (!r.ok) return { ok: false, status: r.status };
     return r.json().then(function(card) {
