@@ -267,7 +267,8 @@ function maybeSyncCardNumber(t, card, label, position, lang) {
   if (numberSyncedAt[card.id] && Date.now() - numberSyncedAt[card.id] < 60000) return;
 
   numberSyncInFlight[card.id] = true;
-  t.getRestApi().getToken().then(function(token) {
+  // Background writes only use the dedicated write token granted in Settings.
+  kbGetWriteToken(t).then(function(token) {
     if (!token) return;
     return enqueueWrite(function() { return syncCardNumber(card.id, label, position, lang, token); });
   }).catch(function(err) {

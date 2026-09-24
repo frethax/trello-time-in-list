@@ -1026,45 +1026,30 @@ function loadNumbering() {
   });
 }
 
-// Returns the current token; only asks for authorization when the user has
-// never connected. Whether that token can *write* is discovered by the
-// first write itself (401) — see runNumbering / showGrantButton.
-function ensureWriteToken() {
-  var restApi = t.getRestApi();
-  return restApi.getToken().then(function(token) {
-    if (token) return token;
-    return restApi.authorize({ scope: 'read,write', expiration: 'never' })
-      .then(function() { return restApi.getToken(); });
-  }).then(function(token) {
-    if (token) currentToken = token;
-    return token || null;
-  }).catch(function(err) {
-    console.error('[Kanbrain] authorize failed:', err);
-    return null;
-  });
-}
-
 function showGrantButton(show) {
   var b = document.getElementById('num-grant');
   if (b) b.style.display = show ? 'block' : 'none';
 }
 
-// Explicit re-authorization with write scope. Called directly from a click
-// so the Trello consent pop-up is never blocked.
+// Opens Trello's consent pop-up asking for read+write, then stores the
+// resulting token (member-private) for all description writes. Called
+// directly from a click so the pop-up is never blocked.
 function grantWriteAccess() {
-  var restApi = t.getRestApi();
-  restApi.authorize({ scope: 'read,write', expiration: 'never' })
-    .then(function() { return restApi.getToken(); })
-    .then(function(token) {
-      if (!token) throw new Error('no token');
-      currentToken = token;
-      showGrantButton(false);
-      return saveNumbering().then(function() { return runNumbering('apply', token); });
-    })
-    .catch(function(err) {
-      console.error('[Kanbrain] write authorization failed:', err);
-      setNumStatus(numStr('numAuthFailed'));
-    });
+  t.authorize(kbAuthorizeUrl(API_KEY), {
+    height: 680,
+    width: 580,
+    validToken: function(v) { return /^[A-Za-z0-9]{32,}$/.test(v || ''); }
+  }).then(function(token) {
+    if (!token) throw new Error('no token');
+    return t.set('member', 'private', KB_WRITE_TOKEN_KEY, token);
+  }).then(function() {
+    showGrantButton(false);
+    return saveNumbering().then(function() { return runNumbering('apply'); });
+  }).catch(function(err) {
+    console.error('[Kanbrain] write authorization failed:', err);
+    setNumStatus(numStr('numAuthFailed'));
+    showGrantButton(true);
+  });
 }
 
 function bindNumberingControls() {
@@ -1082,16 +1067,9 @@ function bindNumberingControls() {
       renderNumbering();
       return;
     }
-    ensureWriteToken().then(function(token) {
-      if (!token) {
-        cb.checked = false;
-        setNumStatus(numStr('numAuthNeeded'));
-        return;
-      }
-      numberingCfg.enabled = true;
-      renderNumbering();
-      return saveNumbering().then(function() { return runNumbering('apply', token); });
-    });
+    numberingCfg.enabled = true;
+    renderNumbering();
+    saveNumbering().then(function() { return runNumbering('apply'); });
   });
 
   if (prefix) {
@@ -1114,10 +1092,7 @@ function bindNumberingControls() {
   });
 
   if (applyBtn) applyBtn.addEventListener('click', function() {
-    ensureWriteToken().then(function(token) {
-      if (!token) { setNumStatus(numStr('numAuthNeeded')); return; }
-      return saveNumbering().then(function() { return runNumbering('apply', token); });
-    });
+    saveNumbering().then(function() { return runNumbering('apply'); });
   });
 
   // Two-step confirm instead of window.confirm(), which can be blocked
@@ -1130,13 +1105,10 @@ function bindNumberingControls() {
       return;
     }
     resetRemoveBtn();
-    ensureWriteToken().then(function(token) {
-      if (!token) { setNumStatus(numStr('numAuthNeeded')); return; }
-      // Disable first so the connector doesn't re-add blocks mid-removal.
-      numberingCfg.enabled = false;
-      renderNumbering();
-      return saveNumbering().then(function() { return runNumbering('remove', token); });
-    });
+    // Disable first so the connector doesn't re-add blocks mid-removal.
+    numberingCfg.enabled = false;
+    renderNumbering();
+    saveNumbering().then(function() { return runNumbering('remove'); });
   });
 }
 
@@ -1149,7 +1121,20 @@ function resetRemoveBtn() {
 
 
 // mode: 'apply' (add/fix numbers) or 'remove' (strip all number blocks)
-function runNumbering(mode, token) {
+function runNumbering(mode) {
+  if (isNumbering) return Promise.resolve();
+  return kbGetWriteToken(t).then(function(token) {
+    if (!token) {
+      setNumStatus(numStr('numAuthNeeded'));
+      showGrantButton(true);
+      return;
+    }
+    showGrantButton(false);
+    return runNumberingWithToken(mode, token);
+  });
+}
+
+function runNumberingWithToken(mode, token) {
   if (isNumbering) return Promise.resolve();
   var boardPromise = currentBoardId ? Promise.resolve({ id: currentBoardId }) : t.board('id');
   isNumbering = true;
@@ -1195,6 +1180,7 @@ function runNumbering(mode, token) {
       });
     }).then(function() {
       if (denied) {
+        kbClearWriteToken(t);  // stored token no longer valid -> ask again
         setNumStatus(numStr('numAuthNeeded') + (lastMsg ? ' (401: ' + lastMsg + ')' : ''));
         showGrantButton(true);
       } else if (failed) {

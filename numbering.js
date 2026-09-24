@@ -153,3 +153,27 @@ function kbPutDesc(apiKey, token, cardId, desc, attempt) {
     }, function() { return { ok: true, status: r.status }; });
   }).catch(function() { return { ok: false, status: -1 }; });
 }
+
+// ---- Write token ---------------------------------------------------------
+// Writes use a dedicated read+write token obtained via our own authorize
+// flow and stored in member-private plugin data. This avoids depending on
+// the scope of the general (read-only) REST client token.
+var KB_WRITE_TOKEN_KEY = 'kbWriteToken';
+var KB_AUTH_RETURN_URL = 'https://trello-time-in-list.vercel.app/auth-success.html';
+
+function kbAuthorizeUrl(apiKey) {
+  return 'https://trello.com/1/authorize?expiration=never&name=Kanbrain' +
+    '&scope=read,write&response_type=token&callback_method=fragment' +
+    '&key=' + apiKey + '&return_url=' + encodeURIComponent(KB_AUTH_RETURN_URL);
+}
+
+// Resolves to the stored write token, or null.
+function kbGetWriteToken(t) {
+  return t.get('member', 'private', KB_WRITE_TOKEN_KEY)
+    .then(function(tok) { return tok || null; })
+    .catch(function() { return null; });
+}
+
+function kbClearWriteToken(t) {
+  return t.remove('member', 'private', KB_WRITE_TOKEN_KEY).catch(function() {});
+}
