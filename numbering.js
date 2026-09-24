@@ -70,7 +70,9 @@ function kbRemoveNumber(desc) {
 }
 
 function kbApplyNumber(desc, label, position, lang) {
-  var clean = kbRemoveNumber(desc).trim();
+  // Only whitespace around the user's text is normalized; the text itself
+  // is never altered or removed.
+  var clean = kbRemoveNumber(desc).replace(/\s+$/, '').replace(/^\n+/, '');
   var block = kbBuildBlock(label, lang);
   if (!clean) return block;
   return position === 'top'
@@ -106,4 +108,29 @@ function kbBadgeColor(cfg) {
 function kbColorHex(id) {
   for (var i = 0; i < KB_BADGE_COLORS.length; i++) if (KB_BADGE_COLORS[i].id === id) return KB_BADGE_COLORS[i].hex;
   return KB_BADGE_COLORS[0].hex;
+}
+
+// Write a card description. Sent as a form-encoded body (the format
+// Trello's own client library uses) and verified against the response,
+// so a request that "succeeds" without actually saving is reported as a
+// failure. Resolves to { ok: bool, status: number }.
+function kbPutDesc(apiKey, token, cardId, desc, retried) {
+  var body = new URLSearchParams();
+  body.set('desc', desc);
+  return fetch('https://api.trello.com/1/cards/' + cardId + '?key=' + apiKey + '&token=' + token, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+    body: body.toString()
+  }).then(function(r) {
+    if (r.status === 429 && !retried) {
+      return new Promise(function(res) { setTimeout(res, 1500); })
+        .then(function() { return kbPutDesc(apiKey, token, cardId, desc, true); });
+    }
+    if (!r.ok) return { ok: false, status: r.status };
+    return r.json().then(function(card) {
+      var saved = card && typeof card.desc === 'string' ? card.desc : null;
+      var ok = saved !== null && saved.replace(/\s+$/, '') === desc.replace(/\s+$/, '');
+      return { ok: ok, status: ok ? r.status : 0 };
+    }, function() { return { ok: true, status: r.status }; });
+  }).catch(function() { return { ok: false, status: -1 }; });
 }

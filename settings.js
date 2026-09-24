@@ -47,7 +47,8 @@ var STRINGS = {
     numRemoved: "Numbers removed from {n} cards.",
     numAuthNeeded: "Write permission is needed to add numbers to card descriptions.",
     numError: "Could not update cards. Please try again.",
-    numColor: "Badge color"
+    numColor: "Badge color",
+    numFailed: "{ok} cards updated, {f} failed (code {code})."
   },
   tr: {
     langTitle:   'Dil',
@@ -92,7 +93,8 @@ var STRINGS = {
     numRemoved: "{n} karttan numara kaldırıldı.",
     numAuthNeeded: "Açıklamalara numara eklemek için yazma izni gerekiyor.",
     numError: "Kartlar güncellenemedi. Lütfen tekrar deneyin.",
-    numColor: "Badge rengi"
+    numColor: "Badge rengi",
+    numFailed: "{ok} kart güncellendi, {f} kart güncellenemedi (kod {code})."
   },
   es: {
     langTitle:   'Idioma',
@@ -137,7 +139,8 @@ var STRINGS = {
     numRemoved: "Números quitados de {n} tarjetas.",
     numAuthNeeded: "Se necesita permiso de escritura para añadir números a las descripciones.",
     numError: "No se pudieron actualizar las tarjetas. Inténtalo de nuevo.",
-    numColor: "Color de insignia"
+    numColor: "Color de insignia",
+    numFailed: "{ok} tarjetas actualizadas, {f} fallaron (código {code})."
   },
   pt: {
     langTitle:   'Idioma',
@@ -182,7 +185,8 @@ var STRINGS = {
     numRemoved: "Números removidos de {n} cartões.",
     numAuthNeeded: "É necessária permissão de escrita para adicionar números às descrições.",
     numError: "Não foi possível atualizar os cartões. Tente novamente.",
-    numColor: "Cor do badge"
+    numColor: "Cor do badge",
+    numFailed: "{ok} cartões atualizados, {f} falharam (código {code})."
   }
 };
 
@@ -936,7 +940,7 @@ function renderPreview() {
     pill.textContent = example;
     el.appendChild(pill);
   }
-  setText('num-help', numStr('numHelp', { x: example }));
+  setText('num-help', numStr('numHelp', { x: kbSearchToken(example) }));
 }
 
 function renderSwatches() {
@@ -1118,20 +1122,6 @@ function resetRemoveBtn() {
   if (b) { b.classList.remove('confirm'); b.innerText = numStr('numRemove'); }
 }
 
-// PUT a card description, retrying once on rate limit.
-function putCardDesc(cardId, desc, token, retried) {
-  return fetch('https://api.trello.com/1/cards/' + cardId + '?key=' + API_KEY + '&token=' + token, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ desc: desc })
-  }).then(function(r) {
-    if (r.status === 429 && !retried) {
-      return new Promise(function(res) { setTimeout(res, 1500); })
-        .then(function() { return putCardDesc(cardId, desc, token, true); });
-    }
-    return r.ok;
-  }).catch(function() { return false; });
-}
 
 // mode: 'apply' (add/fix numbers) or 'remove' (strip all number blocks)
 function runNumbering(mode, token) {
@@ -1156,19 +1146,27 @@ function runNumbering(mode, token) {
       setNumStatus(mode === 'remove' ? numStr('numRemoved', { n: 0 }) : numStr('numUpToDate'));
       return;
     }
-    var done = 0, ok = 0;
+    var done = 0, ok = 0, failed = 0, lastStatus = 0;
     // 4 writes per 600ms ≈ 67 req/10s — safely under Trello's 100/10s cap.
     return runInBatches(todo, 4, 600, function(c) {
       var desc = mode === 'remove'
         ? kbRemoveNumber(c.desc)
         : kbApplyNumber(c.desc, kbNumberLabel(cfg.prefix, c.idShort), cfg.position, currentLang);
       if (desc.length > 16384) { done++; return Promise.resolve(); }
-      return putCardDesc(c.id, desc, token).then(function(success) {
-        done++; if (success) ok++;
+      return kbPutDesc(API_KEY, token, c.id, desc).then(function(res) {
+        done++;
+        if (res.ok) ok++; else { failed++; lastStatus = res.status; }
         setNumStatus(numStr('numWorking', { d: done, n: todo.length }));
       });
     }).then(function() {
-      setNumStatus(mode === 'remove' ? numStr('numRemoved', { n: ok }) : numStr('numDone', { n: ok }));
+      if (failed && lastStatus === 401) {
+        tokenHasWrite = false;
+        setNumStatus(numStr('numAuthNeeded'));
+      } else if (failed) {
+        setNumStatus(numStr('numFailed', { ok: ok, f: failed, code: lastStatus }));
+      } else {
+        setNumStatus(mode === 'remove' ? numStr('numRemoved', { n: ok }) : numStr('numDone', { n: ok }));
+      }
     });
   }).catch(function(err) {
     console.error('[Kanbrain] numbering failed:', err);

@@ -289,12 +289,9 @@ function syncCardNumber(cardId, label, position, lang, token) {
     if (kbHasCorrectNumber(fresh.desc, label, position)) return;
     var desc = kbApplyNumber(fresh.desc, label, position, lang);
     if (desc.length > 16384) return; // Trello's description limit
-    return fetch(base + '?' + auth, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ desc: desc })
-    }).then(function(r) {
-      if (r.status === 401) numberWriteDenied = true;
+    return kbPutDesc(API_KEY, token, cardId, desc).then(function(res) {
+      if (res.status === 401) numberWriteDenied = true;
+      if (!res.ok) console.warn('Kanbrain: could not write number to card', cardId, res.status);
     });
   });
 }
