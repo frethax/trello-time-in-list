@@ -1,7 +1,7 @@
-/* ---- settings.js — ListClock configuration ---- */
+/* ---- settings.js — Kanbrain configuration ---- */
 
 var API_KEY = '526d48a7eb9050082ce280fe0ac1a67f';
-var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'ListClock' });
+var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'Kanbrain' });
 
 var STRINGS = {
   en: {
@@ -15,7 +15,7 @@ var STRINGS = {
     error:       'Could not load lists. Please reconnect your account.',
     helpFlag:    '🚩 Flag — Cards in this list will turn red after the set number of days.',
     helpDone:    '✓ Done — Cards moved here stop accumulating time. Their timer freezes.',
-    helpIgnore:  '⊘ Ignore — Cards in this list are hidden from the ListClock panel and badge.',
+    helpIgnore:  '⊘ Ignore — Cards in this list are hidden from the Kanbrain panel and badge.',
     exportTitle:    'Export Data',
     exportCsvBtn:   'Download as CSV',
     exportXlsxBtn:  'Download as Excel',
@@ -41,7 +41,7 @@ var STRINGS = {
     error:       'Listeler yüklenemedi. Lütfen hesabınızı yeniden bağlayın.',
     helpFlag:    '🚩 İşaretle — Bu listedeki kartlar belirlenen gün sayısını aşınca kırmızıya döner.',
     helpDone:    '✓ Tamamlandı — Buraya taşınan kartların süresi dondurulur. Sayaç durur.',
-    helpIgnore:  '⊘ Yoksay — Bu listedeki kartlar ListClock panelinde ve badge\'de gösterilmez.',
+    helpIgnore:  '⊘ Yoksay — Bu listedeki kartlar Kanbrain panelinde ve badge\'de gösterilmez.',
     exportTitle:    'Veri Dışa Aktar',
     exportCsvBtn:   'CSV olarak indir',
     exportXlsxBtn:  'Excel olarak indir',
@@ -67,7 +67,7 @@ var STRINGS = {
     error:       'No se pudieron cargar las listas.',
     helpFlag:    '🚩 Marcar — Las tarjetas en esta lista se volverán rojas después del número de días establecido.',
     helpDone:    '✓ Hecho — Las tarjetas movidas aquí dejan de acumular tiempo. El temporizador se congela.',
-    helpIgnore:  '⊘ Ignorar — Las tarjetas en esta lista se ocultan del panel y la insignia de ListClock.',
+    helpIgnore:  '⊘ Ignorar — Las tarjetas en esta lista se ocultan del panel y la insignia de Kanbrain.',
     exportTitle:    'Exportar Datos',
     exportCsvBtn:   'Descargar como CSV',
     exportXlsxBtn:  'Descargar como Excel',
@@ -93,7 +93,7 @@ var STRINGS = {
     error:       'Não foi possível carregar as listas.',
     helpFlag:    '🚩 Sinalizar — Os cartões nesta lista ficarão vermelhos após o número de dias definido.',
     helpDone:    '✓ Concluído — Os cartões movidos aqui param de acumular tempo. O cronômetro congela.',
-    helpIgnore:  '⊘ Ignorar — Os cartões nesta lista ficam ocultos do painel e do badge do ListClock.',
+    helpIgnore:  '⊘ Ignorar — Os cartões nesta lista ficam ocultos do painel e do badge do Kanbrain.',
     exportTitle:    'Exportar Dados',
     exportCsvBtn:   'Baixar como CSV',
     exportXlsxBtn:  'Baixar como Excel',
@@ -341,7 +341,7 @@ t.render(function() {
       });
     });
   }).catch(function(err) {
-    console.error('[ListClock] settings load failed:', err);
+    console.error('[Kanbrain] settings load failed:', err);
     var container = document.getElementById('lists');
     container.innerHTML = '';
     var msg = document.createElement('div');
@@ -676,7 +676,7 @@ function exportToXlsx(rows, filename) {
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
     'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
-    '<sheets><sheet name="ListClock" sheetId="1" r:id="rId1"/></sheets></workbook>';
+    '<sheets><sheet name="Kanbrain" sheetId="1" r:id="rId1"/></sheets></workbook>';
 
   var workbookRels =
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
@@ -804,7 +804,7 @@ function runExport(format) {
         return;
       }
 
-      var filename = 'ListClock-export-' + formatDateFull(new Date());
+      var filename = 'Kanbrain-export-' + formatDateFull(new Date());
       if (format === 'csv') {
         exportToCsv(rows, filename + '.csv');
       } else {
@@ -816,7 +816,7 @@ function runExport(format) {
       setExportButtonsDisabled(false);
     });
   }).catch(function(err) {
-    console.error('[ListClock] export failed:', err);
+    console.error('[Kanbrain] export failed:', err);
     setExportStatus(STRINGS[currentLang].exportError);
     isExporting = false;
     setExportButtonsDisabled(false);

@@ -116,7 +116,7 @@
     return related;
   }
 
-  var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'ListClock' });
+  var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'Kanbrain' });
 
   t.render(function() {
     return t.get('board', 'shared', 'language')
@@ -207,7 +207,7 @@
           // Previously an unhandled rejection here just left the panel blank
           // with no explanation. Show a message and let the user retry
           // instead of it silently "not calculating".
-          console.warn('ListClock: failed to load card actions', err);
+          console.warn('Kanbrain: failed to load card actions', err);
           showLoadError(L, function() { loadCard(token, L); });
         });
     });

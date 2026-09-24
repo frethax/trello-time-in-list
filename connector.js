@@ -1,4 +1,4 @@
-/* ---- ListClock — connector.js ---- */
+/* ---- Kanbrain — connector.js ---- */
 
 var API_KEY = '526d48a7eb9050082ce280fe0ac1a67f';
 
@@ -6,7 +6,7 @@ TrelloPowerUp.initialize({
 
   'card-back-section': function(t, options) {
     return {
-      title: 'ListClock',
+      title: 'Kanbrain',
       icon:  'https://trello-time-in-list.vercel.app/icon.svg',
       content: {
         type:   'iframe',
@@ -62,7 +62,7 @@ TrelloPowerUp.initialize({
         // Don't silently blank the badge on a failed/rate-limited request —
         // surface a short-lived placeholder so Trello re-invokes this soon
         // and the badge self-heals without the user needing to notice/retry.
-        console.warn('ListClock: card-badges failed, will retry shortly', err);
+        console.warn('Kanbrain: card-badges failed, will retry shortly', err);
         return retryPlaceholderBadge();
       });
 
@@ -77,7 +77,7 @@ TrelloPowerUp.initialize({
 
   'board-buttons': function(t, options) {
     return [{
-      text: 'ListClock',
+      text: 'Kanbrain',
       icon: {
         light: 'https://trello-time-in-list.vercel.app/icon.svg',
         dark: 'https://trello-time-in-list.vercel.app/icon-white.svg'
@@ -89,7 +89,7 @@ TrelloPowerUp.initialize({
           accentColor: '#0052cc',
           height: 720,
           fullscreen: false,
-          title: 'ListClock Settings'
+          title: 'Kanbrain Settings'
         });
       }
     }];
@@ -97,9 +97,9 @@ TrelloPowerUp.initialize({
 
 }, {
   appKey:        API_KEY,
-  appName:       'ListClock',
+  appName:       'Kanbrain',
   apiOrigin:     'https://api.trello.com',
-  authorizeName: 'ListClock',
+  authorizeName: 'Kanbrain',
   authorizeButton: true,
   scope: { read: true }
 });
