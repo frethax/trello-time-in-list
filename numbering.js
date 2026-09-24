@@ -1,16 +1,11 @@
 /* ---- numbering.js — Kanbrain card numbering helpers (shared) ---- */
 /* Loaded by index.html (connector) and settings.html. No dependencies. */
 
-var KB_NUM_NOTES = {
-  en: 'Added by Kanbrain. Used for search, please do not delete.',
-  tr: 'Kanbrain tarafından eklendi. Aramada kullanılır, lütfen silmeyin.',
-  es: 'Añadido por Kanbrain. Se usa para buscar, por favor no lo borres.',
-  pt: 'Adicionado pelo Kanbrain. Usado na busca, por favor não apague.'
-};
+var KB_NUM_NOTE = 'Added by Kanbrain. Used for search, please do not delete.';
 
-// Tolerant matcher: survives Trello's editor rewriting _italic_ as *italic*,
-// collapsing/expanding blank lines, or longer --- rules.
-var KB_NUM_RE = /\n*-{3,}[ \t]*\n+🔢 \*\*([^*\n]+)\*\*[ \t]*\n+[_*][^\n]*[_*][ \t]*\n+-{3,}[ \t]*(\n+|$)/;
+// Tolerant matcher: accepts any note line (old italic/localized ones too),
+// collapsed/expanded blank lines and longer --- rules.
+var KB_NUM_RE = /\n*-{3,}[ \t]*\n+🔢 \*\*([^*\n]+)\*\*([^\n]*)\n+([^\n]+)\n+-{3,}[ \t]*(\n+|$)/;
 
 var KB_NUM_DEFAULTS = { enabled: false, prefix: '#', position: 'bottom', color: 'none' };
 
@@ -51,11 +46,18 @@ function kbNumberLabel(prefix, idShort) {
   return /[A-Za-z0-9]$/.test(prefix) ? prefix + '-' + idShort : prefix + idShort;
 }
 
+// Search token: a single plain alphanumeric word. Trello search treats
+// '#word' as a label search and '-' as negation, so '#42' / 'NS-42' are
+// unreliable queries. 'NS-42' -> 'NS42'; '#42' -> 'KB42'.
+function kbSearchToken(label) {
+  var tok = String(label).replace(/[^A-Za-z0-9]/g, '');
+  return /[A-Za-z]/.test(tok) ? tok : 'KB' + tok;
+}
+
 function kbBuildBlock(label, lang) {
-  var note = KB_NUM_NOTES[lang] || KB_NUM_NOTES.en;
   // Blank line before the closing --- is required: without it Trello's
   // markdown turns the note line into an H2 (setext heading).
-  return '---\n🔢 **' + label + '**\n_' + note + '_\n\n---';
+  return '---\n🔢 **' + label + '** · ' + kbSearchToken(label) + '\n' + KB_NUM_NOTE + '\n\n---';
 }
 
 function kbRemoveNumber(desc) {
@@ -83,6 +85,10 @@ function kbHasCorrectNumber(desc, label, position) {
   var d = String(desc || '');
   var m = d.match(KB_NUM_RE);
   if (!m || m[1].trim() !== label) return false;
+  // older blocks had no search token -> treat as outdated so they get upgraded
+  if (m[2].indexOf(kbSearchToken(label)) === -1) return false;
+  // older blocks had a localized / italic note -> upgrade to plain English
+  if (m[3].trim() !== KB_NUM_NOTE) return false;
   var before = d.slice(0, m.index).trim();
   var after  = d.slice(m.index + m[0].length).trim();
   if (position === 'top') return before === '';
