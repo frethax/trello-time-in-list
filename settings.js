@@ -28,7 +28,25 @@ var STRINGS = {
     contactBtn:     'Contact Us',
     connectMsg:     'Connect your Trello account to load and export list data.',
     connectBtn:     'Connect Trello Account',
-    retryBtn:       'Try Again'
+    retryBtn:       'Try Again',
+    numTitle: "Card Numbers",
+    numEnable: "Enable card numbers",
+    numEnableSub: "Shown as a badge and written into each card description",
+    numPrefix: "Prefix",
+    numPreview: "Example: {x}",
+    numPos: "Position in description",
+    numTop: "Top",
+    numBottom: "Bottom",
+    numApply: "Number all cards",
+    numRemove: "Remove all numbers",
+    numConfirm: "Click again to confirm",
+    numHelp: "The number is added to the card description so Trello search can find it (search \"{x}\"). New cards are numbered automatically when they appear on the board.",
+    numWorking: "Updating cards... ({d}/{n})",
+    numDone: "{n} cards numbered.",
+    numUpToDate: "All cards are already up to date.",
+    numRemoved: "Numbers removed from {n} cards.",
+    numAuthNeeded: "Write permission is needed to add numbers to card descriptions.",
+    numError: "Could not update cards. Please try again."
   },
   tr: {
     langTitle:   'Dil',
@@ -54,7 +72,25 @@ var STRINGS = {
     contactBtn:     'Bize Ulaşın',
     connectMsg:     'Liste verilerini yükleyip dışa aktarmak için Trello hesabınızı bağlayın.',
     connectBtn:     'Trello Hesabını Bağla',
-    retryBtn:       'Tekrar Dene'
+    retryBtn:       'Tekrar Dene',
+    numTitle: "Kart Numaraları",
+    numEnable: "Kart numaralandırmayı aç",
+    numEnableSub: "Badge olarak gösterilir ve her kartın açıklamasına yazılır",
+    numPrefix: "Önek",
+    numPreview: "Örnek: {x}",
+    numPos: "Açıklamadaki konum",
+    numTop: "Üst",
+    numBottom: "Alt",
+    numApply: "Tüm kartları numaralandır",
+    numRemove: "Tüm numaraları kaldır",
+    numConfirm: "Onaylamak için tekrar tıklayın",
+    numHelp: "Numara kart açıklamasına eklenir, böylece Trello aramasıyla bulunabilir (\"{x}\" diye arayın). Yeni kartlar board’da göründüğünde otomatik numaralanır.",
+    numWorking: "Kartlar güncelleniyor... ({d}/{n})",
+    numDone: "{n} kart numaralandırıldı.",
+    numUpToDate: "Tüm kartlar zaten güncel.",
+    numRemoved: "{n} karttan numara kaldırıldı.",
+    numAuthNeeded: "Açıklamalara numara eklemek için yazma izni gerekiyor.",
+    numError: "Kartlar güncellenemedi. Lütfen tekrar deneyin."
   },
   es: {
     langTitle:   'Idioma',
@@ -80,7 +116,25 @@ var STRINGS = {
     contactBtn:     'Contáctanos',
     connectMsg:     'Conecta tu cuenta de Trello para cargar y exportar los datos de las listas.',
     connectBtn:     'Conectar Cuenta de Trello',
-    retryBtn:       'Reintentar'
+    retryBtn:       'Reintentar',
+    numTitle: "Números de tarjeta",
+    numEnable: "Activar números de tarjeta",
+    numEnableSub: "Se muestra como insignia y se escribe en la descripción",
+    numPrefix: "Prefijo",
+    numPreview: "Ejemplo: {x}",
+    numPos: "Posición en la descripción",
+    numTop: "Arriba",
+    numBottom: "Abajo",
+    numApply: "Numerar todas",
+    numRemove: "Quitar números",
+    numConfirm: "Haz clic de nuevo para confirmar",
+    numHelp: "El número se añade a la descripción para que la búsqueda de Trello lo encuentre (busca \"{x}\"). Las tarjetas nuevas se numeran automáticamente al aparecer en el tablero.",
+    numWorking: "Actualizando tarjetas... ({d}/{n})",
+    numDone: "{n} tarjetas numeradas.",
+    numUpToDate: "Todas las tarjetas ya están al día.",
+    numRemoved: "Números quitados de {n} tarjetas.",
+    numAuthNeeded: "Se necesita permiso de escritura para añadir números a las descripciones.",
+    numError: "No se pudieron actualizar las tarjetas. Inténtalo de nuevo."
   },
   pt: {
     langTitle:   'Idioma',
@@ -106,7 +160,25 @@ var STRINGS = {
     contactBtn:     'Fale Conosco',
     connectMsg:     'Conecte sua conta Trello para carregar e exportar os dados das listas.',
     connectBtn:     'Conectar Conta Trello',
-    retryBtn:       'Tentar Novamente'
+    retryBtn:       'Tentar Novamente',
+    numTitle: "Números de cartão",
+    numEnable: "Ativar números de cartão",
+    numEnableSub: "Exibido como badge e escrito na descrição de cada cartão",
+    numPrefix: "Prefixo",
+    numPreview: "Exemplo: {x}",
+    numPos: "Posição na descrição",
+    numTop: "Topo",
+    numBottom: "Final",
+    numApply: "Numerar todos",
+    numRemove: "Remover números",
+    numConfirm: "Clique novamente para confirmar",
+    numHelp: "O número é adicionado à descrição para que a busca do Trello o encontre (busque \"{x}\"). Cartões novos são numerados automaticamente ao aparecer no quadro.",
+    numWorking: "Atualizando cartões... ({d}/{n})",
+    numDone: "{n} cartões numerados.",
+    numUpToDate: "Todos os cartões já estão atualizados.",
+    numRemoved: "Números removidos de {n} cartões.",
+    numAuthNeeded: "É necessária permissão de escrita para adicionar números às descrições.",
+    numError: "Não foi possível atualizar os cartões. Tente novamente."
   }
 };
 
@@ -127,6 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var xlsxBtn  = document.getElementById('export-xlsx');
   if (csvBtn)  csvBtn.addEventListener('click', function() { runExport('csv'); });
   if (xlsxBtn) xlsxBtn.addEventListener('click', function() { runExport('xlsx'); });
+  bindNumberingControls();
 });
 
 var currentLang = 'en', boardLists = [], listSettings = {};
@@ -163,6 +236,7 @@ function applyStrings() {
   var contactLabel   = document.getElementById('contact-label');
   if (contactTitleEl) contactTitleEl.innerText = s.contactTitle;
   if (contactLabel)   contactLabel.innerText   = s.contactBtn;
+  applyNumberingStrings();
 }
 
 function updatePill(input) {
@@ -310,6 +384,7 @@ function fetchListsWithRetry(boardId, token, attempt) {
 
 t.render(function() {
   var restApi = t.getRestApi();
+  loadNumbering();
   return restApi.getToken().then(function(token) {
     if (!token) {
       showConnectGate();
@@ -820,5 +895,247 @@ function runExport(format) {
     setExportStatus(STRINGS[currentLang].exportError);
     isExporting = false;
     setExportButtonsDisabled(false);
+  });
+}
+
+/* ===================== CARD NUMBERING ===================== */
+
+var numberingCfg = kbNormalizeNumbering(null);
+var tokenHasWrite = false;
+var isNumbering = false;
+var removeConfirmTimer = null;
+
+function numStr(key, vars) {
+  var s = STRINGS[currentLang][key] || STRINGS.en[key] || '';
+  vars = vars || {};
+  return s.replace(/\{(\w+)\}/g, function(_, k) { return vars[k] != null ? vars[k] : ''; });
+}
+
+function setText(id, text) {
+  var el = document.getElementById(id);
+  if (el) el.innerText = text;
+}
+
+function applyNumberingStrings() {
+  var example = kbNumberLabel(numberingCfg.prefix, 42);
+  setText('num-title', numStr('numTitle'));
+  setText('num-enable-label', numStr('numEnable'));
+  setText('num-enable-sub', numStr('numEnableSub'));
+  setText('num-prefix-label', numStr('numPrefix'));
+  setText('num-preview', numStr('numPreview', { x: example }));
+  setText('num-pos-label', numStr('numPos'));
+  setText('num-pos-top', numStr('numTop'));
+  setText('num-pos-bottom', numStr('numBottom'));
+  setText('num-apply', numStr('numApply'));
+  if (!removeConfirmTimer) setText('num-remove', numStr('numRemove'));
+  setText('num-help', numStr('numHelp', { x: example }));
+}
+
+function renderNumbering() {
+  var cb = document.getElementById('num-enabled');
+  var prefix = document.getElementById('num-prefix');
+  var opts = document.getElementById('num-options');
+  if (cb) cb.checked = numberingCfg.enabled;
+  if (prefix && document.activeElement !== prefix) prefix.value = numberingCfg.prefix;
+  if (opts) opts.className = numberingCfg.enabled ? '' : 'num-disabled';
+  var applyBtn = document.getElementById('num-apply');
+  if (applyBtn) applyBtn.disabled = isNumbering || !numberingCfg.enabled;
+  ['top', 'bottom'].forEach(function(pos) {
+    var b = document.getElementById('num-pos-' + pos);
+    if (b) b.className = 'lang-btn pos-btn' + (numberingCfg.position === pos ? ' active' : '');
+  });
+  applyNumberingStrings();
+}
+
+function setNumStatus(text) {
+  var el = document.getElementById('num-status');
+  if (!el) return;
+  if (text) { el.innerText = text; el.classList.add('visible'); }
+  else { el.classList.remove('visible'); el.innerText = ''; }
+}
+
+function setNumButtonsDisabled(disabled) {
+  ['num-apply', 'num-remove', 'num-enabled'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.disabled = disabled;
+  });
+}
+
+function saveNumbering() {
+  return t.set('board', 'shared', 'numbering', numberingCfg);
+}
+
+function loadNumbering() {
+  t.get('board', 'shared', 'numbering').then(function(cfg) {
+    numberingCfg = kbNormalizeNumbering(cfg);
+    renderNumbering();
+  });
+  // Check once, up front, whether the current token can write. The
+  // authorize popup must open synchronously inside a click handler (or the
+  // browser blocks it), so we can't do this check at click time.
+  t.getRestApi().getToken().then(function(token) {
+    if (!token) { tokenHasWrite = false; return; }
+    return fetch('https://api.trello.com/1/tokens/' + token +
+                 '?fields=permissions&key=' + API_KEY + '&token=' + token)
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(info) {
+        var perms = (info && info.permissions) || [];
+        tokenHasWrite = perms.some(function(p) { return p.write === true; });
+      });
+  }).catch(function() { tokenHasWrite = false; });
+}
+
+// Resolves to a token with write scope, or null if the user declined.
+function ensureWriteToken() {
+  var restApi = t.getRestApi();
+  if (tokenHasWrite) return restApi.getToken();
+  return restApi.authorize({ scope: 'read,write', expiration: 'never' })
+    .then(function() { return restApi.getToken(); })
+    .then(function(token) {
+      if (token) { tokenHasWrite = true; currentToken = token; }
+      return token || null;
+    })
+    .catch(function() { return null; });
+}
+
+function bindNumberingControls() {
+  var cb = document.getElementById('num-enabled');
+  var prefix = document.getElementById('num-prefix');
+  var applyBtn = document.getElementById('num-apply');
+  var removeBtn = document.getElementById('num-remove');
+
+  if (cb) cb.addEventListener('change', function() {
+    if (!cb.checked) {
+      numberingCfg.enabled = false;
+      saveNumbering();
+      renderNumbering();
+      return;
+    }
+    ensureWriteToken().then(function(token) {
+      if (!token) {
+        cb.checked = false;
+        setNumStatus(numStr('numAuthNeeded'));
+        return;
+      }
+      numberingCfg.enabled = true;
+      renderNumbering();
+      return saveNumbering().then(function() { return runNumbering('apply', token); });
+    });
+  });
+
+  if (prefix) {
+    prefix.addEventListener('input', function() {
+      setText('num-preview', numStr('numPreview', { x: kbNumberLabel(prefix.value, 42) }));
+    });
+    prefix.addEventListener('change', function() {
+      numberingCfg.prefix = kbSanitizePrefix(prefix.value);
+      prefix.value = numberingCfg.prefix;
+      saveNumbering();
+      renderNumbering();
+    });
+  }
+
+  ['top', 'bottom'].forEach(function(pos) {
+    var b = document.getElementById('num-pos-' + pos);
+    if (b) b.addEventListener('click', function() {
+      numberingCfg.position = pos;
+      saveNumbering();
+      renderNumbering();
+    });
+  });
+
+  if (applyBtn) applyBtn.addEventListener('click', function() {
+    ensureWriteToken().then(function(token) {
+      if (!token) { setNumStatus(numStr('numAuthNeeded')); return; }
+      return saveNumbering().then(function() { return runNumbering('apply', token); });
+    });
+  });
+
+  // Two-step confirm instead of window.confirm(), which can be blocked
+  // inside Trello's sandboxed modal iframe.
+  if (removeBtn) removeBtn.addEventListener('click', function() {
+    if (!removeConfirmTimer) {
+      removeBtn.classList.add('confirm');
+      removeBtn.innerText = numStr('numConfirm');
+      removeConfirmTimer = setTimeout(resetRemoveBtn, 4000);
+      return;
+    }
+    resetRemoveBtn();
+    ensureWriteToken().then(function(token) {
+      if (!token) { setNumStatus(numStr('numAuthNeeded')); return; }
+      // Disable first so the connector doesn't re-add blocks mid-removal.
+      numberingCfg.enabled = false;
+      renderNumbering();
+      return saveNumbering().then(function() { return runNumbering('remove', token); });
+    });
+  });
+}
+
+function resetRemoveBtn() {
+  clearTimeout(removeConfirmTimer);
+  removeConfirmTimer = null;
+  var b = document.getElementById('num-remove');
+  if (b) { b.classList.remove('confirm'); b.innerText = numStr('numRemove'); }
+}
+
+// PUT a card description, retrying once on rate limit.
+function putCardDesc(cardId, desc, token, retried) {
+  return fetch('https://api.trello.com/1/cards/' + cardId + '?key=' + API_KEY + '&token=' + token, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ desc: desc })
+  }).then(function(r) {
+    if (r.status === 429 && !retried) {
+      return new Promise(function(res) { setTimeout(res, 1500); })
+        .then(function() { return putCardDesc(cardId, desc, token, true); });
+    }
+    return r.ok;
+  }).catch(function() { return false; });
+}
+
+// mode: 'apply' (add/fix numbers) or 'remove' (strip all number blocks)
+function runNumbering(mode, token) {
+  if (isNumbering) return Promise.resolve();
+  var boardPromise = currentBoardId ? Promise.resolve({ id: currentBoardId }) : t.board('id');
+  isNumbering = true;
+  setNumButtonsDisabled(true);
+  setNumStatus(numStr('numWorking', { d: 0, n: '…' }));
+
+  return boardPromise.then(function(board) {
+    currentBoardId = board.id;
+    return fetch('https://api.trello.com/1/boards/' + board.id +
+                 '/cards/open?fields=desc,idShort&key=' + API_KEY + '&token=' + token)
+      .then(function(r) { if (!r.ok) throw new Error('cards ' + r.status); return r.json(); });
+  }).then(function(cards) {
+    var cfg = numberingCfg;
+    var todo = cards.filter(function(c) {
+      if (mode === 'remove') return kbHasNumber(c.desc);
+      return !kbHasCorrectNumber(c.desc, kbNumberLabel(cfg.prefix, c.idShort), cfg.position);
+    });
+    if (!todo.length) {
+      setNumStatus(mode === 'remove' ? numStr('numRemoved', { n: 0 }) : numStr('numUpToDate'));
+      return;
+    }
+    var done = 0, ok = 0;
+    // 4 writes per 600ms ≈ 67 req/10s — safely under Trello's 100/10s cap.
+    return runInBatches(todo, 4, 600, function(c) {
+      var desc = mode === 'remove'
+        ? kbRemoveNumber(c.desc)
+        : kbApplyNumber(c.desc, kbNumberLabel(cfg.prefix, c.idShort), cfg.position, currentLang);
+      if (desc.length > 16384) { done++; return Promise.resolve(); }
+      return putCardDesc(c.id, desc, token).then(function(success) {
+        done++; if (success) ok++;
+        setNumStatus(numStr('numWorking', { d: done, n: todo.length }));
+      });
+    }).then(function() {
+      setNumStatus(mode === 'remove' ? numStr('numRemoved', { n: ok }) : numStr('numDone', { n: ok }));
+    });
+  }).catch(function(err) {
+    console.error('[Kanbrain] numbering failed:', err);
+    setNumStatus(numStr('numError'));
+  }).then(function() {
+    isNumbering = false;
+    setNumButtonsDisabled(false);
+    renderNumbering();
   });
 }

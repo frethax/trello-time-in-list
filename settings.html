@@ -115,6 +115,23 @@
       cursor: pointer; text-decoration: none; transition: all 0.15s;
     }
     .contact-btn:hover { border-color: #0052cc; color: #0052cc; }
+
+    /* Numbering */
+    .num-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+    .num-row + .num-row { border-top: 1px solid #f0f1f3; }
+    .num-label { flex: 1; font-size: 13px; font-weight: 500; color: #172b4d; }
+    .num-sub { font-size: 11px; color: #5e6c84; font-weight: 400; margin-top: 2px; }
+    .prefix-input {
+      width: 80px; height: 30px; padding: 0 8px; border: 2px solid #dfe1e6;
+      border-radius: 6px; font-size: 13px; font-weight: 600; color: #172b4d; outline: none;
+    }
+    .prefix-input:focus { border-color: #0052cc; }
+    .pos-btn { padding: 5px 12px; font-size: 12px; }
+    .num-help { font-size: 12px; color: #5e6c84; line-height: 1.5; margin-top: 8px; }
+    .num-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .export-btn.danger:hover { border-color: #eb5a46; color: #eb5a46; }
+    .export-btn.confirm { border-color: #eb5a46; color: #eb5a46; background: #ffebe6; }
+    .num-disabled { opacity: 0.45; pointer-events: none; }
   </style>
 </head>
 <body>
@@ -144,6 +161,37 @@
     </div>
 
     <div class="section">
+      <div class="section-title" id="num-title">Card Numbers</div>
+      <div class="card">
+        <div class="num-row">
+          <div class="num-label"><span id="num-enable-label">Enable card numbers</span>
+            <div class="num-sub" id="num-enable-sub"></div></div>
+          <label class="toggle"><input type="checkbox" id="num-enabled"><span class="slider"></span></label>
+        </div>
+        <div id="num-options">
+          <div class="num-row">
+            <div class="num-label"><span id="num-prefix-label">Prefix</span>
+              <div class="num-sub" id="num-preview"></div></div>
+            <input class="prefix-input" id="num-prefix" maxlength="8" value="#">
+          </div>
+          <div class="num-row">
+            <div class="num-label" id="num-pos-label">Position in description</div>
+            <div class="lang-options">
+              <button class="lang-btn pos-btn" id="num-pos-top">Top</button>
+              <button class="lang-btn pos-btn active" id="num-pos-bottom">Bottom</button>
+            </div>
+          </div>
+        </div>
+        <div class="num-actions">
+          <button class="export-btn" id="num-apply">Number all cards</button>
+          <button class="export-btn danger" id="num-remove">Remove all numbers</button>
+        </div>
+        <div class="num-help" id="num-help"></div>
+        <div class="export-status" id="num-status"></div>
+      </div>
+    </div>
+
+    <div class="section">
       <div class="section-title" id="export-title">Export Data</div>
       <div class="card">
         <div class="export-buttons">
@@ -163,6 +211,7 @@
       </div>
     </div>
   </div>
+  <script src="/numbering.js"></script>
   <script src="/settings.js"></script>
 </body>
 </html>

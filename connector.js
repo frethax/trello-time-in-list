@@ -19,6 +19,21 @@ TrelloPowerUp.initialize({
   'card-badges': function(t, options) {
     var restApi = t.getRestApi();
 
+    // Card number badge — independent of auth and of list settings, so it
+    // shows even for ignored/done lists and before the account is connected.
+    var numberPart = Promise.all([
+      t.get('board', 'shared', 'numbering'),
+      t.get('board', 'shared', 'language'),
+      t.card('id', 'idShort', 'desc')
+    ]).then(function(r) {
+      var cfg = kbNormalizeNumbering(r[0]);
+      if (!cfg.enabled) return [];
+      var card  = r[2];
+      var label = kbNumberLabel(cfg.prefix, card.idShort);
+      maybeSyncCardNumber(t, card, label, cfg.position, r[1] || 'en');
+      return [{ text: label, color: null }];
+    }).catch(function() { return []; });
+
     var work = restApi.getToken()
       .then(function(token) {
         if (!token) return [];
@@ -72,7 +87,10 @@ TrelloPowerUp.initialize({
     // gives up waiting and shows nothing at all — which looked like "badges
     // appeared, then all vanished". Racing against a timeout means every
     // card always gets *something* back: real data, or a retry placeholder.
-    return withTimeout(work, 9000, retryPlaceholderBadge());
+    var timePart = withTimeout(work, 9000, retryPlaceholderBadge());
+    return Promise.all([numberPart, timePart]).then(function(parts) {
+      return parts[0].concat(parts[1] || []);
+    });
   },
 
   'board-buttons': function(t, options) {
@@ -223,4 +241,78 @@ function formatTime(ms) {
   if (days > 0 && rest > 0) return days + ' days ' + rest + ' hours';
   if (days > 0) return days + ' days';
   return hours + ' hours';
+}
+
+// ---- Card numbering: write the number block into the description --------
+// Runs opportunistically from card-badges: every visible card is checked
+// against the expected block, and only mismatching cards are written. New
+// cards therefore get their number as soon as they appear on the board.
+// Writes need a token with write scope; with a read-only token the first
+// 401 disables writing for this session (badge still shows the number).
+var numberWriteDenied = false;
+var numberSyncInFlight = {};
+var numberSyncedAt = {};
+var writeQueue = [];
+var activeWrites = 0;
+var MAX_CONCURRENT_WRITES = 2;
+
+function maybeSyncCardNumber(t, card, label, position, lang) {
+  if (numberWriteDenied) return;
+  if (kbHasCorrectNumber(card.desc, label, position)) return;
+  if (numberSyncInFlight[card.id]) return;
+  // t.card() can be stale right after our own write — don't re-check a
+  // card we synced in the last 60s.
+  if (numberSyncedAt[card.id] && Date.now() - numberSyncedAt[card.id] < 60000) return;
+
+  numberSyncInFlight[card.id] = true;
+  t.getRestApi().getToken().then(function(token) {
+    if (!token) return;
+    return enqueueWrite(function() { return syncCardNumber(card.id, label, position, lang, token); });
+  }).catch(function(err) {
+    console.warn('Kanbrain: numbering sync failed', err);
+  }).then(function() {
+    delete numberSyncInFlight[card.id];
+    numberSyncedAt[card.id] = Date.now();
+  });
+}
+
+function syncCardNumber(cardId, label, position, lang, token) {
+  var base = 'https://api.trello.com/1/cards/' + cardId;
+  var auth = 'key=' + API_KEY + '&token=' + token;
+  // Re-read the latest description right before writing so an edit the
+  // user just made is never overwritten.
+  return fetch(base + '?fields=desc&' + auth).then(function(r) {
+    if (r.status === 401) { numberWriteDenied = true; return null; }
+    return r.ok ? r.json() : null;
+  }).then(function(fresh) {
+    if (!fresh || numberWriteDenied) return;
+    if (kbHasCorrectNumber(fresh.desc, label, position)) return;
+    var desc = kbApplyNumber(fresh.desc, label, position, lang);
+    if (desc.length > 16384) return; // Trello's description limit
+    return fetch(base + '?' + auth, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ desc: desc })
+    }).then(function(r) {
+      if (r.status === 401) numberWriteDenied = true;
+    });
+  });
+}
+
+function enqueueWrite(job) {
+  return new Promise(function(resolve, reject) {
+    writeQueue.push({ job: job, resolve: resolve, reject: reject });
+    pumpWrites();
+  });
+}
+
+function pumpWrites() {
+  while (activeWrites < MAX_CONCURRENT_WRITES && writeQueue.length) {
+    var w = writeQueue.shift();
+    activeWrites++;
+    w.job().then(w.resolve, w.reject).then(function() {
+      // small gap between writes keeps us far below the 100 req/10s limit
+      setTimeout(function() { activeWrites--; pumpWrites(); }, 250);
+    });
+  }
 }
