@@ -88,8 +88,26 @@ TrelloPowerUp.initialize({
     // appeared, then all vanished". Racing against a timeout means every
     // card always gets *something* back: real data, or a retry placeholder.
     var timePart = withTimeout(work, 9000, retryPlaceholderBadge());
-    return Promise.all([numberPart, timePart]).then(function(parts) {
-      return parts[0].concat(parts[1] || []);
+    var subtaskPart = kbSubtaskBadges(t);
+    return Promise.all([numberPart, subtaskPart, timePart]).then(function(parts) {
+      return parts[0].concat(parts[1] || [], parts[2] || []);
+    });
+  },
+
+  // Main task link on the card back (clickable -> opens the main task),
+  // and a subtask count on main tasks (clickable -> list of subtasks).
+  'card-detail-badges': function(t, options) {
+    return kbSubtaskDetailBadges(t);
+  },
+
+  'card-buttons': function(t, options) {
+    return t.get('board', 'shared', 'subtasks').then(function(cfg) {
+      if (!kbNormalizeSubtasks(cfg).enabled) return [];
+      var icon = 'https://trello-time-in-list.vercel.app/icon.svg';
+      return [
+        { icon: icon, text: 'Main Task',   condition: 'edit', callback: kbOpenParentPicker },
+        { icon: icon, text: 'Add Subtask', condition: 'edit', callback: kbOpenChildPicker }
+      ];
     });
   },
 

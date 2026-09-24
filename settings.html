@@ -235,6 +235,39 @@
       </div>
     </details>
 
+    <details class="acc" data-key="subtasks">
+      <summary><span class="section-title" id="sub-title">Subtasks</span><span class="acc-meta" id="sub-meta"></span><span class="chev"></span></summary>
+      <div class="acc-body">
+      <div class="card">
+        <div class="num-row">
+          <div class="num-label"><span id="sub-enable-label">Enable main tasks &amp; subtasks</span>
+            <div class="num-sub" id="sub-preview"></div></div>
+          <label class="toggle"><input type="checkbox" id="sub-enabled"><span class="slider"></span></label>
+        </div>
+        <div id="sub-options">
+          <div class="num-row">
+            <div class="num-label" id="sub-display-label">Badge shows</div>
+            <div class="lang-options">
+              <button class="lang-btn pos-btn" id="sub-display-number">Number</button>
+              <button class="lang-btn pos-btn" id="sub-display-name">Name</button>
+              <button class="lang-btn pos-btn" id="sub-display-both">Both</button>
+            </div>
+          </div>
+          <div class="num-row">
+            <div class="num-label"><span id="sub-parent-label">Show badge on main tasks</span>
+              <div class="num-sub" id="sub-parent-sub"></div></div>
+            <label class="toggle"><input type="checkbox" id="sub-show-parent"><span class="slider"></span></label>
+          </div>
+          <div class="num-row">
+            <div class="num-label" id="sub-color-label">Badge color</div>
+            <div class="swatches" id="sub-swatches"></div>
+          </div>
+        </div>
+        <div class="num-help" id="sub-help"></div>
+      </div>
+      </div>
+    </details>
+
     <details class="acc" data-key="export">
       <summary><span class="section-title" id="export-title">Export Data</span><span class="chev"></span></summary>
       <div class="acc-body">
@@ -260,6 +293,7 @@
     </details>
   </div>
   <script src="/numbering.js"></script>
+  <script src="/subtasks.js"></script>
   <script src="/settings.js"></script>
 </body>
 </html>

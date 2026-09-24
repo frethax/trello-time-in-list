@@ -48,6 +48,17 @@ var STRINGS = {
     numAuthNeeded: "Write permission is needed to add numbers to card descriptions.",
     numError: "Could not update cards. Please try again.",
     numColor: "Badge color",
+    subTitle: "Subtasks",
+    subEnable: "Enable main tasks & subtasks",
+    subDisplay: "Badge shows",
+    subNumber: "Number",
+    subName: "Name",
+    subBoth: "Both",
+    subParent: "Show badge on main tasks",
+    subParentSub: "e.g. \"Main Task · 3\"",
+    subColor: "Badge color",
+    subHelp: "Open a card and use the \"Main Task\" button to pick its main task, or \"Add Subtask\" to attach other cards to it. Click the badge on the card back to jump between them.",
+    subOn: "On",
     numGrant: "Grant write access",
     numAuthFailed: "Authorization was cancelled or blocked. Please allow pop-ups and try again.",
     numFailed: "{ok} cards updated, {f} failed (code {code})."
@@ -96,6 +107,17 @@ var STRINGS = {
     numAuthNeeded: "Açıklamalara numara eklemek için yazma izni gerekiyor.",
     numError: "Kartlar güncellenemedi. Lütfen tekrar deneyin.",
     numColor: "Badge rengi",
+    subTitle: "Alt Görevler",
+    subEnable: "Ana görev ve alt görevleri aç",
+    subDisplay: "Badge içeriği",
+    subNumber: "Numara",
+    subName: "İsim",
+    subBoth: "İkisi",
+    subParent: "Ana görevlerde badge göster",
+    subParentSub: "örn. \"Main Task · 3\"",
+    subColor: "Badge rengi",
+    subHelp: "Bir kartı açıp \"Main Task\" butonuyla ana görevini seçin veya \"Add Subtask\" ile başka kartları alt görev olarak ekleyin. Kart içindeki badge’e tıklayarak aralarında geçiş yapabilirsiniz.",
+    subOn: "Açık",
     numGrant: "Yazma izni ver",
     numAuthFailed: "Yetkilendirme iptal edildi veya engellendi. Açılır pencerelere izin verip tekrar deneyin.",
     numFailed: "{ok} kart güncellendi, {f} kart güncellenemedi (kod {code})."
@@ -144,6 +166,17 @@ var STRINGS = {
     numAuthNeeded: "Se necesita permiso de escritura para añadir números a las descripciones.",
     numError: "No se pudieron actualizar las tarjetas. Inténtalo de nuevo.",
     numColor: "Color de insignia",
+    subTitle: "Subtareas",
+    subEnable: "Activar tareas principales y subtareas",
+    subDisplay: "La insignia muestra",
+    subNumber: "Número",
+    subName: "Nombre",
+    subBoth: "Ambos",
+    subParent: "Mostrar insignia en tareas principales",
+    subParentSub: "p. ej. \"Main Task · 3\"",
+    subColor: "Color de insignia",
+    subHelp: "Abre una tarjeta y usa \"Main Task\" para elegir su tarea principal, o \"Add Subtask\" para añadir otras tarjetas. Haz clic en la insignia dentro de la tarjeta para saltar entre ellas.",
+    subOn: "Activo",
     numGrant: "Conceder permiso de escritura",
     numAuthFailed: "La autorización se canceló o se bloqueó. Permite las ventanas emergentes e inténtalo de nuevo.",
     numFailed: "{ok} tarjetas actualizadas, {f} fallaron (código {code})."
@@ -192,6 +225,17 @@ var STRINGS = {
     numAuthNeeded: "É necessária permissão de escrita para adicionar números às descrições.",
     numError: "Não foi possível atualizar os cartões. Tente novamente.",
     numColor: "Cor do badge",
+    subTitle: "Subtarefas",
+    subEnable: "Ativar tarefas principais e subtarefas",
+    subDisplay: "O badge mostra",
+    subNumber: "Número",
+    subName: "Nome",
+    subBoth: "Ambos",
+    subParent: "Mostrar badge nas tarefas principais",
+    subParentSub: "ex. \"Main Task · 3\"",
+    subColor: "Cor do badge",
+    subHelp: "Abra um cartão e use \"Main Task\" para escolher a tarefa principal, ou \"Add Subtask\" para anexar outros cartões. Clique no badge dentro do cartão para navegar entre eles.",
+    subOn: "Ativo",
     numGrant: "Conceder permissão de escrita",
     numAuthFailed: "A autorização foi cancelada ou bloqueada. Permita pop-ups e tente novamente.",
     numFailed: "{ok} cartões atualizados, {f} falharam (código {code})."
@@ -254,6 +298,7 @@ function applyStrings() {
   if (contactLabel)   contactLabel.innerText   = s.contactBtn;
   applyNumberingStrings();
   updateAccordionMeta();
+  if (typeof renderSubtasks === 'function' && typeof subtasksCfg !== 'undefined') renderSubtasks();
 }
 
 function updatePill(input) {
@@ -402,6 +447,7 @@ function fetchListsWithRetry(boardId, token, attempt) {
 t.render(function() {
   var restApi = t.getRestApi();
   loadNumbering();
+  loadSubtasks();
   return restApi.getToken().then(function(token) {
     if (!token) {
       showConnectGate();
@@ -1001,6 +1047,7 @@ function renderNumbering() {
   renderSwatches();
   applyNumberingStrings();
   updateAccordionMeta();
+  if (typeof renderSubtasks === 'function' && typeof subtasksCfg !== 'undefined') renderSubtasks();
 }
 
 function setNumStatus(text) {
@@ -1234,3 +1281,94 @@ function updateAccordionMeta() {
 }
 
 document.addEventListener('DOMContentLoaded', initAccordion);
+
+/* ===================== SUBTASKS ===================== */
+
+var subtasksCfg = kbNormalizeSubtasks(null);
+
+function makeSwatches(boxId, current, onPick) {
+  var box = document.getElementById(boxId);
+  if (!box) return;
+  box.innerHTML = '';
+  KB_BADGE_COLORS.forEach(function(c) {
+    var b = document.createElement('button');
+    b.className = 'swatch' + (current === c.id ? ' active' : '');
+    b.style.backgroundColor = c.hex;
+    b.title = c.id;
+    b.setAttribute('aria-label', c.id);
+    b.addEventListener('click', function() { onPick(c.id); });
+    box.appendChild(b);
+  });
+}
+
+function saveSubtasks() {
+  return t.set('board', 'shared', 'subtasks', subtasksCfg);
+}
+
+function renderSubtasks() {
+  var cb = document.getElementById('sub-enabled');
+  var parentCb = document.getElementById('sub-show-parent');
+  var opts = document.getElementById('sub-options');
+  if (cb) cb.checked = subtasksCfg.enabled;
+  if (parentCb) parentCb.checked = subtasksCfg.showOnParent;
+  if (opts) opts.className = subtasksCfg.enabled ? '' : 'num-disabled';
+  ['number', 'name', 'both'].forEach(function(m) {
+    var b = document.getElementById('sub-display-' + m);
+    if (b) b.className = 'lang-btn pos-btn' + (subtasksCfg.display === m ? ' active' : '');
+  });
+  makeSwatches('sub-swatches', subtasksCfg.color, function(id) {
+    subtasksCfg.color = id; saveSubtasks(); renderSubtasks();
+  });
+
+  setText('sub-title', numStr('subTitle'));
+  setText('sub-enable-label', numStr('subEnable'));
+  setText('sub-display-label', numStr('subDisplay'));
+  setText('sub-display-number', numStr('subNumber'));
+  setText('sub-display-name', numStr('subName'));
+  setText('sub-display-both', numStr('subBoth'));
+  setText('sub-parent-label', numStr('subParent'));
+  setText('sub-parent-sub', numStr('subParentSub'));
+  setText('sub-color-label', numStr('subColor'));
+  setText('sub-help', numStr('subHelp'));
+
+  // Live preview pill: exactly what a subtask's badge will look like.
+  var prev = document.getElementById('sub-preview');
+  if (prev) {
+    prev.textContent = '';
+    var pill = document.createElement('span');
+    pill.className = 'num-pill';
+    pill.style.marginLeft = '0';
+    pill.style.backgroundColor = kbColorHex(subtasksCfg.color);
+    pill.textContent = kbParentBadgeText({ idShort: 12, name: 'Login screen redesign' },
+                                         numberingCfg, subtasksCfg);
+    prev.appendChild(pill);
+  }
+  var meta = document.getElementById('sub-meta');
+  if (meta) meta.innerText = subtasksCfg.enabled ? numStr('subOn') : '—';
+}
+
+function loadSubtasks() {
+  t.get('board', 'shared', 'subtasks').then(function(cfg) {
+    subtasksCfg = kbNormalizeSubtasks(cfg);
+    renderSubtasks();
+  });
+}
+
+function bindSubtaskControls() {
+  var cb = document.getElementById('sub-enabled');
+  if (cb) cb.addEventListener('change', function() {
+    subtasksCfg.enabled = cb.checked; saveSubtasks(); renderSubtasks();
+  });
+  var parentCb = document.getElementById('sub-show-parent');
+  if (parentCb) parentCb.addEventListener('change', function() {
+    subtasksCfg.showOnParent = parentCb.checked; saveSubtasks(); renderSubtasks();
+  });
+  ['number', 'name', 'both'].forEach(function(m) {
+    var b = document.getElementById('sub-display-' + m);
+    if (b) b.addEventListener('click', function() {
+      subtasksCfg.display = m; saveSubtasks(); renderSubtasks();
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', bindSubtaskControls);
