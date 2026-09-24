@@ -107,7 +107,7 @@ function kbPickerItems(t, cards, excludeIds, numCfg, onPick) {
 }
 
 // "Main Task" button: choose this card's main task.
-function kbOpenParentPicker(t) {
+function kbOpenParentPicker(t, opts) {
   return Promise.all([
     t.card('id'), kbBoardCards(t), t.get('board', 'shared', 'numbering')
   ]).then(function(r) {
@@ -127,6 +127,7 @@ function kbOpenParentPicker(t) {
         }));
       return t.popup({
         title: 'Select main task',
+        mouseEvent: opts && opts.mouseEvent,
         items: items,
         search: { count: 10, placeholder: 'Search by name or number', empty: 'No cards found' }
       });
@@ -135,7 +136,7 @@ function kbOpenParentPicker(t) {
 }
 
 // "Add Subtask" button: make another card a subtask of this card.
-function kbOpenChildPicker(t) {
+function kbOpenChildPicker(t, opts) {
   return Promise.all([
     t.card('id'), kbBoardCards(t), t.get('board', 'shared', 'numbering')
   ]).then(function(r) {
@@ -144,6 +145,7 @@ function kbOpenChildPicker(t) {
       var exclude = [me, rel[0]].concat(rel[1]);
       return t.popup({
         title: 'Add subtask',
+        mouseEvent: opts && opts.mouseEvent,
         items: kbPickerItems(t, cards, exclude, numCfg, function(t2, c) {
           return kbSetParent(t2, c.id, me).then(function() { return t2.closePopup(); })
             .catch(function() { return t2.closePopup(); });
@@ -155,9 +157,10 @@ function kbOpenChildPicker(t) {
 }
 
 // Subtask list popup (from the parent's detail badge).
-function kbOpenChildrenList(t, children, numCfg) {
+function kbOpenChildrenList(t, children, numCfg, opts) {
   return t.popup({
     title: 'Subtasks',
+    mouseEvent: opts && opts.mouseEvent,
     items: children.map(function(c) {
       return {
         text: kbCardRef(c, numCfg) + ' · ' + c.name,

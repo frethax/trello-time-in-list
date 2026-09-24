@@ -118,7 +118,43 @@
 
   var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'Kanbrain' });
 
+  // ---- Main task / subtask bar (works even if card-buttons is hidden) ----
+  function renderSubbar() {
+    var bar = document.getElementById('kb-subbar');
+    if (!bar || typeof kbSubtaskContext !== 'function') return Promise.resolve();
+    return kbSubtaskContext(t).then(function(ctx) {
+      bar.innerHTML = '';
+      if (!ctx) { t.sizeTo('#kb-wrap'); return; }   // feature disabled in settings
+      function chip(text, cls, onClick) {
+        var b = document.createElement('button');
+        b.className = 'kb-chip' + (cls ? ' ' + cls : '');
+        b.textContent = text;
+        b.title = text;
+        b.addEventListener('click', onClick);
+        bar.appendChild(b);
+      }
+      if (ctx.parent) {
+        var p = ctx.parent;
+        chip(KB_MAIN_TASK_LABEL + ': ' + kbCardRef(p, ctx.numCfg) + ' · ' + kbTruncate(p.name, 40), 'link',
+             function() { t.showCard(p.id); });
+      }
+      if (ctx.children.length) {
+        chip('Subtasks · ' + ctx.children.length, 'link', function(e) {
+          kbOpenChildrenList(t, ctx.children, ctx.numCfg, { mouseEvent: e });
+        });
+      }
+      chip(ctx.parent ? '✎ Change main task' : '＋ Set main task', '', function(e) {
+        kbOpenParentPicker(t, { mouseEvent: e });
+      });
+      chip('＋ Add subtask', '', function(e) {
+        kbOpenChildPicker(t, { mouseEvent: e });
+      });
+      t.sizeTo('#kb-wrap');
+    }).catch(function() {});
+  }
+
   t.render(function() {
+    renderSubbar();
     return t.get('board', 'shared', 'language')
       .then(function(lang) {
         var L = STRINGS[lang] || STRINGS['en'];
@@ -155,7 +191,7 @@
     wrap.appendChild(msg);
     wrap.appendChild(btn);
     root.appendChild(wrap);
-    t.sizeTo('#root');
+    t.sizeTo('#kb-wrap');
   }
 
   function loadCard(token, L) {
@@ -182,7 +218,7 @@
       if (isIgnore) {
         document.getElementById('root').innerHTML =
           '<div style="font-size:12px;color:#5e6c84;padding:16px">⊘ ' + L.ignored + '</div>';
-        t.sizeTo('#root');
+        t.sizeTo('#kb-wrap');
         return;
       }
 
@@ -196,7 +232,7 @@
           if (!actions || !actions.length) {
             document.getElementById('root').innerHTML =
               '<div style="font-size:12px;color:#5e6c84;padding:16px">' + L.noData + '</div>';
-            t.sizeTo('#root');
+            t.sizeTo('#kb-wrap');
             renderRelatedCards(relatedCards, L);
             return;
           }
@@ -225,7 +261,7 @@
     wrap.appendChild(msg);
     wrap.appendChild(btn);
     root.appendChild(wrap);
-    t.sizeTo('#root');
+    t.sizeTo('#kb-wrap');
   }
 
   function renderPanel(actions, isDone, L, currentListName, relatedCards) {
@@ -418,7 +454,7 @@
         histBody.style.marginTop = '0';
         arrow.style.transform = 'rotate(0deg)';
       }
-      setTimeout(function(){ t.sizeTo('#root'); }, 300);
+      setTimeout(function(){ t.sizeTo('#kb-wrap'); }, 300);
     });
 
     wrap.appendChild(left);
@@ -478,7 +514,7 @@
     }
 
     root.appendChild(section);
-    t.sizeTo('#root');
+    t.sizeTo('#kb-wrap');
   }
 
   function el(tag, css) {
