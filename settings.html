@@ -143,36 +143,63 @@
     .export-btn.danger:hover { border-color: #eb5a46; color: #eb5a46; }
     .export-btn.confirm { border-color: #eb5a46; color: #eb5a46; background: #ffebe6; }
     .num-disabled { opacity: 0.45; pointer-events: none; }
+
+    /* Accordion sections */
+    .acc {
+      background: white; border: 1px solid #dfe1e6; border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .acc > summary {
+      list-style: none; display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px; cursor: pointer; user-select: none;
+    }
+    .acc > summary::-webkit-details-marker { display: none; }
+    .acc > summary:hover .section-title { color: #0052cc; }
+    .acc > summary .section-title { margin: 0; flex: 1; }
+    .acc-meta { font-size: 12px; color: #5e6c84; white-space: nowrap; }
+    .chev {
+      width: 7px; height: 7px; flex-shrink: 0; margin-right: 2px;
+      border-right: 2px solid #5e6c84; border-bottom: 2px solid #5e6c84;
+      transform: rotate(-45deg); transition: transform 0.15s;
+    }
+    .acc[open] > summary .chev { transform: rotate(45deg); }
+    .acc-body { padding: 0 14px 14px; }
+    .acc-body > .card { border: none; padding: 0; background: transparent; }
+    .acc-body .help-box {
+      background: #f4f5f7; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
   <div id="root">
-    <div class="section">
-      <div class="section-title" id="lang-title">Language</div>
-      <div class="lang-options">
-        <button class="lang-btn active" id="lang-en">English</button>
-        <button class="lang-btn" id="lang-tr">Türkçe</button>
-        <button class="lang-btn" id="lang-es">Español</button>
-        <button class="lang-btn" id="lang-pt">Português</button>
+    <details class="acc" data-key="lang">
+      <summary><span class="section-title" id="lang-title">Language</span><span class="acc-meta" id="lang-meta"></span><span class="chev"></span></summary>
+      <div class="acc-body">
+        <div class="lang-options">
+          <button class="lang-btn active" id="lang-en">English</button>
+          <button class="lang-btn" id="lang-tr">Türkçe</button>
+          <button class="lang-btn" id="lang-es">Español</button>
+          <button class="lang-btn" id="lang-pt">Português</button>
+        </div>
       </div>
-    </div>
+    </details>
 
-    <div class="section">
-      <div class="card help-box">
-        <div class="help-row" id="help-flag"></div>
-        <div class="help-row" id="help-done"></div>
-        <div class="help-row" id="help-ignore"></div>
+    <details class="acc" data-key="lists" open>
+      <summary><span class="section-title" id="lists-title">List Settings</span><span class="chev"></span></summary>
+      <div class="acc-body">
+        <div class="help-box">
+          <div class="help-row" id="help-flag"></div>
+          <div class="help-row" id="help-done"></div>
+          <div class="help-row" id="help-ignore"></div>
+        </div>
+        <div id="lists"><div class="loading">Loading...</div></div>
+        <button class="save-btn" id="save" style="display:none; margin-top: 10px;">Save Settings</button>
       </div>
-    </div>
+    </details>
 
-    <div class="section">
-      <div class="section-title" id="lists-title">List Settings</div>
-      <div id="lists"><div class="loading">Loading...</div></div>
-      <button class="save-btn" id="save" style="display:none; margin-top: 10px;">Save Settings</button>
-    </div>
-
-    <div class="section">
-      <div class="section-title" id="num-title">Card Numbers</div>
+    <details class="acc" data-key="numbers">
+      <summary><span class="section-title" id="num-title">Card Numbers</span><span class="acc-meta" id="num-meta"></span><span class="chev"></span></summary>
+      <div class="acc-body">
       <div class="card">
         <div class="num-row">
           <div class="num-label"><span id="num-enable-label">Enable card numbers</span>
@@ -205,10 +232,12 @@
         <div class="num-help" id="num-help"></div>
         <div class="export-status" id="num-status"></div>
       </div>
-    </div>
+      </div>
+    </details>
 
-    <div class="section">
-      <div class="section-title" id="export-title">Export Data</div>
+    <details class="acc" data-key="export">
+      <summary><span class="section-title" id="export-title">Export Data</span><span class="chev"></span></summary>
+      <div class="acc-body">
       <div class="card">
         <div class="export-buttons">
           <button class="export-btn" id="export-csv">Download as CSV</button>
@@ -216,16 +245,19 @@
         </div>
         <div class="export-status" id="export-status"></div>
       </div>
-    </div>
+      </div>
+    </details>
 
-    <div class="section">
-      <div class="section-title" id="contact-title">Contact</div>
+    <details class="acc" data-key="contact">
+      <summary><span class="section-title" id="contact-title">Contact</span><span class="chev"></span></summary>
+      <div class="acc-body">
       <div class="card">
         <a class="contact-btn" id="contact-btn" href="https://forms.gle/AWmvM5AsYsFhTwPz7" target="_blank" rel="noopener noreferrer">
           📩 <span id="contact-label">Bize Ulaşın</span>
         </a>
       </div>
-    </div>
+      </div>
+    </details>
   </div>
   <script src="/numbering.js"></script>
   <script src="/settings.js"></script>

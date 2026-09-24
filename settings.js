@@ -253,6 +253,7 @@ function applyStrings() {
   if (contactTitleEl) contactTitleEl.innerText = s.contactTitle;
   if (contactLabel)   contactLabel.innerText   = s.contactBtn;
   applyNumberingStrings();
+  updateAccordionMeta();
 }
 
 function updatePill(input) {
@@ -999,6 +1000,7 @@ function renderNumbering() {
   });
   renderSwatches();
   applyNumberingStrings();
+  updateAccordionMeta();
 }
 
 function setNumStatus(text) {
@@ -1198,3 +1200,37 @@ function runNumberingWithToken(mode, token) {
     renderNumbering();
   });
 }
+
+/* ===================== COLLAPSIBLE SECTIONS ===================== */
+
+// Remembers which sections are open between visits (per browser).
+var KB_OPEN_KEY = 'kb-settings-open';
+
+function initAccordion() {
+  var saved = null;
+  try { saved = JSON.parse(localStorage.getItem(KB_OPEN_KEY) || 'null'); } catch (e) {}
+  var sections = document.querySelectorAll('details.acc');
+  sections.forEach(function(d) {
+    if (Array.isArray(saved)) d.open = saved.indexOf(d.dataset.key) !== -1;
+    d.addEventListener('toggle', function() {
+      var open = [];
+      document.querySelectorAll('details.acc').forEach(function(x) { if (x.open) open.push(x.dataset.key); });
+      try { localStorage.setItem(KB_OPEN_KEY, JSON.stringify(open)); } catch (e) {}
+    });
+  });
+}
+
+// Short summary shown in a section header while it's collapsed.
+function updateAccordionMeta() {
+  var langMeta = document.getElementById('lang-meta');
+  if (langMeta) {
+    var l = LANGS.filter(function(x) { return x.code === currentLang; })[0];
+    langMeta.innerText = l ? l.label : '';
+  }
+  var numMeta = document.getElementById('num-meta');
+  if (numMeta) {
+    numMeta.innerText = numberingCfg.enabled ? kbNumberLabel(numberingCfg.prefix, 42) : '—';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initAccordion);
