@@ -12,14 +12,30 @@ var KB_NUM_NOTES = {
 // collapsing/expanding blank lines, or longer --- rules.
 var KB_NUM_RE = /\n*-{3,}[ \t]*\n+🔢 \*\*([^*\n]+)\*\*[ \t]*\n+[_*][^\n]*[_*][ \t]*\n+-{3,}[ \t]*(\n+|$)/;
 
-var KB_NUM_DEFAULTS = { enabled: false, prefix: '#', position: 'bottom' };
+var KB_NUM_DEFAULTS = { enabled: false, prefix: '#', position: 'bottom', color: 'none' };
+
+// Trello card-badge colors (+ 'none' = Trello's default gray badge).
+// hex values are only for the settings preview swatches.
+var KB_BADGE_COLORS = [
+  { id: 'none',   hex: '#dfe1e6' },
+  { id: 'blue',   hex: '#579dff' },
+  { id: 'sky',    hex: '#6cc3e0' },
+  { id: 'green',  hex: '#4bce97' },
+  { id: 'lime',   hex: '#94c748' },
+  { id: 'yellow', hex: '#f5cd47' },
+  { id: 'orange', hex: '#fea362' },
+  { id: 'red',    hex: '#f87168' },
+  { id: 'pink',   hex: '#e774bb' },
+  { id: 'purple', hex: '#9f8fef' }
+];
 
 function kbNormalizeNumbering(cfg) {
   cfg = cfg || {};
   return {
     enabled:  cfg.enabled === true,
     prefix:   kbSanitizePrefix(cfg.prefix),
-    position: cfg.position === 'top' ? 'top' : 'bottom'
+    position: cfg.position === 'top' ? 'top' : 'bottom',
+    color:    KB_BADGE_COLORS.some(function(c) { return c.id === cfg.color; }) ? cfg.color : 'none'
   };
 }
 
@@ -75,4 +91,13 @@ function kbHasCorrectNumber(desc, label, position) {
 
 function kbHasNumber(desc) {
   return KB_NUM_RE.test(String(desc || ''));
+}
+
+function kbBadgeColor(cfg) {
+  return cfg.color && cfg.color !== 'none' ? cfg.color : null;
+}
+
+function kbColorHex(id) {
+  for (var i = 0; i < KB_BADGE_COLORS.length; i++) if (KB_BADGE_COLORS[i].id === id) return KB_BADGE_COLORS[i].hex;
+  return KB_BADGE_COLORS[0].hex;
 }

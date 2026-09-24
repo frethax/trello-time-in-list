@@ -31,7 +31,7 @@ TrelloPowerUp.initialize({
       var card  = r[2];
       var label = kbNumberLabel(cfg.prefix, card.idShort);
       maybeSyncCardNumber(t, card, label, cfg.position, r[1] || 'en');
-      return [{ text: label, color: null }];
+      return [{ text: label, color: kbBadgeColor(cfg) }];
     }).catch(function() { return []; });
 
     var work = restApi.getToken()

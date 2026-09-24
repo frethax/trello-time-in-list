@@ -46,7 +46,8 @@ var STRINGS = {
     numUpToDate: "All cards are already up to date.",
     numRemoved: "Numbers removed from {n} cards.",
     numAuthNeeded: "Write permission is needed to add numbers to card descriptions.",
-    numError: "Could not update cards. Please try again."
+    numError: "Could not update cards. Please try again.",
+    numColor: "Badge color"
   },
   tr: {
     langTitle:   'Dil',
@@ -90,7 +91,8 @@ var STRINGS = {
     numUpToDate: "Tüm kartlar zaten güncel.",
     numRemoved: "{n} karttan numara kaldırıldı.",
     numAuthNeeded: "Açıklamalara numara eklemek için yazma izni gerekiyor.",
-    numError: "Kartlar güncellenemedi. Lütfen tekrar deneyin."
+    numError: "Kartlar güncellenemedi. Lütfen tekrar deneyin.",
+    numColor: "Badge rengi"
   },
   es: {
     langTitle:   'Idioma',
@@ -134,7 +136,8 @@ var STRINGS = {
     numUpToDate: "Todas las tarjetas ya están al día.",
     numRemoved: "Números quitados de {n} tarjetas.",
     numAuthNeeded: "Se necesita permiso de escritura para añadir números a las descripciones.",
-    numError: "No se pudieron actualizar las tarjetas. Inténtalo de nuevo."
+    numError: "No se pudieron actualizar las tarjetas. Inténtalo de nuevo.",
+    numColor: "Color de insignia"
   },
   pt: {
     langTitle:   'Idioma',
@@ -178,7 +181,8 @@ var STRINGS = {
     numUpToDate: "Todos os cartões já estão atualizados.",
     numRemoved: "Números removidos de {n} cartões.",
     numAuthNeeded: "É necessária permissão de escrita para adicionar números às descrições.",
-    numError: "Não foi possível atualizar os cartões. Tente novamente."
+    numError: "Não foi possível atualizar os cartões. Tente novamente.",
+    numColor: "Cor do badge"
   }
 };
 
@@ -916,19 +920,56 @@ function setText(id, text) {
   if (el) el.innerText = text;
 }
 
+function livePrefix() {
+  var el = document.getElementById('num-prefix');
+  return el && document.activeElement === el ? el.value : numberingCfg.prefix;
+}
+
+function renderPreview() {
+  var example = kbNumberLabel(livePrefix(), 42);
+  var el = document.getElementById('num-preview');
+  if (el) {
+    el.textContent = numStr('numPreview', { x: '' }).replace(/\s*$/, '');
+    var pill = document.createElement('span');
+    pill.className = 'num-pill';
+    pill.style.backgroundColor = kbColorHex(numberingCfg.color);
+    pill.textContent = example;
+    el.appendChild(pill);
+  }
+  setText('num-help', numStr('numHelp', { x: example }));
+}
+
+function renderSwatches() {
+  var box = document.getElementById('num-swatches');
+  if (!box) return;
+  box.innerHTML = '';
+  KB_BADGE_COLORS.forEach(function(c) {
+    var b = document.createElement('button');
+    b.className = 'swatch' + (numberingCfg.color === c.id ? ' active' : '');
+    b.style.backgroundColor = c.hex;
+    b.title = c.id;
+    b.setAttribute('aria-label', c.id);
+    b.addEventListener('click', function() {
+      numberingCfg.color = c.id;
+      saveNumbering();
+      renderNumbering();
+    });
+    box.appendChild(b);
+  });
+}
+
 function applyNumberingStrings() {
-  var example = kbNumberLabel(numberingCfg.prefix, 42);
   setText('num-title', numStr('numTitle'));
   setText('num-enable-label', numStr('numEnable'));
   setText('num-enable-sub', numStr('numEnableSub'));
   setText('num-prefix-label', numStr('numPrefix'));
-  setText('num-preview', numStr('numPreview', { x: example }));
+  setText('num-color-label', numStr('numColor'));
   setText('num-pos-label', numStr('numPos'));
   setText('num-pos-top', numStr('numTop'));
   setText('num-pos-bottom', numStr('numBottom'));
   setText('num-apply', numStr('numApply'));
   if (!removeConfirmTimer) setText('num-remove', numStr('numRemove'));
-  setText('num-help', numStr('numHelp', { x: example }));
+  renderPreview();
 }
 
 function renderNumbering() {
@@ -944,6 +985,7 @@ function renderNumbering() {
     var b = document.getElementById('num-pos-' + pos);
     if (b) b.className = 'lang-btn pos-btn' + (numberingCfg.position === pos ? ' active' : '');
   });
+  renderSwatches();
   applyNumberingStrings();
 }
 
@@ -1024,9 +1066,7 @@ function bindNumberingControls() {
   });
 
   if (prefix) {
-    prefix.addEventListener('input', function() {
-      setText('num-preview', numStr('numPreview', { x: kbNumberLabel(prefix.value, 42) }));
-    });
+    prefix.addEventListener('input', renderPreview);
     prefix.addEventListener('change', function() {
       numberingCfg.prefix = kbSanitizePrefix(prefix.value);
       prefix.value = numberingCfg.prefix;
