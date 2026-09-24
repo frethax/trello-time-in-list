@@ -141,7 +141,11 @@ function kbPutDesc(apiKey, token, cardId, desc, attempt) {
       return new Promise(function(res) { setTimeout(res, wait + Math.floor(Math.random() * 500)); })
         .then(function() { return kbPutDesc(apiKey, token, cardId, desc, attempt + 1); });
     }
-    if (!r.ok) return { ok: false, status: r.status };
+    if (!r.ok) {
+      return r.text().then(function(txt) {
+        return { ok: false, status: r.status, message: String(txt || '').slice(0, 80) };
+      }, function() { return { ok: false, status: r.status, message: '' }; });
+    }
     return r.json().then(function(card) {
       var saved = card && typeof card.desc === 'string' ? card.desc : null;
       var ok = saved !== null && saved.replace(/\s+$/, '') === desc.replace(/\s+$/, '');

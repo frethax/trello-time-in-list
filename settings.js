@@ -48,6 +48,8 @@ var STRINGS = {
     numAuthNeeded: "Write permission is needed to add numbers to card descriptions.",
     numError: "Could not update cards. Please try again.",
     numColor: "Badge color",
+    numGrant: "Grant write access",
+    numAuthFailed: "Authorization was cancelled or blocked. Please allow pop-ups and try again.",
     numFailed: "{ok} cards updated, {f} failed (code {code})."
   },
   tr: {
@@ -94,6 +96,8 @@ var STRINGS = {
     numAuthNeeded: "Açıklamalara numara eklemek için yazma izni gerekiyor.",
     numError: "Kartlar güncellenemedi. Lütfen tekrar deneyin.",
     numColor: "Badge rengi",
+    numGrant: "Yazma izni ver",
+    numAuthFailed: "Yetkilendirme iptal edildi veya engellendi. Açılır pencerelere izin verip tekrar deneyin.",
     numFailed: "{ok} kart güncellendi, {f} kart güncellenemedi (kod {code})."
   },
   es: {
@@ -140,6 +144,8 @@ var STRINGS = {
     numAuthNeeded: "Se necesita permiso de escritura para añadir números a las descripciones.",
     numError: "No se pudieron actualizar las tarjetas. Inténtalo de nuevo.",
     numColor: "Color de insignia",
+    numGrant: "Conceder permiso de escritura",
+    numAuthFailed: "La autorización se canceló o se bloqueó. Permite las ventanas emergentes e inténtalo de nuevo.",
     numFailed: "{ok} tarjetas actualizadas, {f} fallaron (código {code})."
   },
   pt: {
@@ -186,6 +192,8 @@ var STRINGS = {
     numAuthNeeded: "É necessária permissão de escrita para adicionar números às descrições.",
     numError: "Não foi possível atualizar os cartões. Tente novamente.",
     numColor: "Cor do badge",
+    numGrant: "Conceder permissão de escrita",
+    numAuthFailed: "A autorização foi cancelada ou bloqueada. Permita pop-ups e tente novamente.",
     numFailed: "{ok} cartões atualizados, {f} falharam (código {code})."
   }
 };
@@ -909,7 +917,6 @@ function runExport(format) {
 /* ===================== CARD NUMBERING ===================== */
 
 var numberingCfg = kbNormalizeNumbering(null);
-var tokenHasWrite = false;
 var isNumbering = false;
 var removeConfirmTimer = null;
 
@@ -972,6 +979,7 @@ function applyNumberingStrings() {
   setText('num-pos-top', numStr('numTop'));
   setText('num-pos-bottom', numStr('numBottom'));
   setText('num-apply', numStr('numApply'));
+  setText('num-grant', numStr('numGrant'));
   if (!removeConfirmTimer) setText('num-remove', numStr('numRemove'));
   renderPreview();
 }
@@ -1016,32 +1024,47 @@ function loadNumbering() {
     numberingCfg = kbNormalizeNumbering(cfg);
     renderNumbering();
   });
-  // Check once, up front, whether the current token can write. The
-  // authorize popup must open synchronously inside a click handler (or the
-  // browser blocks it), so we can't do this check at click time.
-  t.getRestApi().getToken().then(function(token) {
-    if (!token) { tokenHasWrite = false; return; }
-    return fetch('https://api.trello.com/1/tokens/' + token +
-                 '?fields=permissions&key=' + API_KEY + '&token=' + token)
-      .then(function(r) { return r.ok ? r.json() : null; })
-      .then(function(info) {
-        var perms = (info && info.permissions) || [];
-        tokenHasWrite = perms.some(function(p) { return p.write === true; });
-      });
-  }).catch(function() { tokenHasWrite = false; });
 }
 
-// Resolves to a token with write scope, or null if the user declined.
+// Returns the current token; only asks for authorization when the user has
+// never connected. Whether that token can *write* is discovered by the
+// first write itself (401) — see runNumbering / showGrantButton.
 function ensureWriteToken() {
   var restApi = t.getRestApi();
-  if (tokenHasWrite) return restApi.getToken();
-  return restApi.authorize({ scope: 'read,write', expiration: 'never' })
+  return restApi.getToken().then(function(token) {
+    if (token) return token;
+    return restApi.authorize({ scope: 'read,write', expiration: 'never' })
+      .then(function() { return restApi.getToken(); });
+  }).then(function(token) {
+    if (token) currentToken = token;
+    return token || null;
+  }).catch(function(err) {
+    console.error('[Kanbrain] authorize failed:', err);
+    return null;
+  });
+}
+
+function showGrantButton(show) {
+  var b = document.getElementById('num-grant');
+  if (b) b.style.display = show ? 'block' : 'none';
+}
+
+// Explicit re-authorization with write scope. Called directly from a click
+// so the Trello consent pop-up is never blocked.
+function grantWriteAccess() {
+  var restApi = t.getRestApi();
+  restApi.authorize({ scope: 'read,write', expiration: 'never' })
     .then(function() { return restApi.getToken(); })
     .then(function(token) {
-      if (token) { tokenHasWrite = true; currentToken = token; }
-      return token || null;
+      if (!token) throw new Error('no token');
+      currentToken = token;
+      showGrantButton(false);
+      return saveNumbering().then(function() { return runNumbering('apply', token); });
     })
-    .catch(function() { return null; });
+    .catch(function(err) {
+      console.error('[Kanbrain] write authorization failed:', err);
+      setNumStatus(numStr('numAuthFailed'));
+    });
 }
 
 function bindNumberingControls() {
@@ -1049,6 +1072,8 @@ function bindNumberingControls() {
   var prefix = document.getElementById('num-prefix');
   var applyBtn = document.getElementById('num-apply');
   var removeBtn = document.getElementById('num-remove');
+  var grantBtn = document.getElementById('num-grant');
+  if (grantBtn) grantBtn.addEventListener('click', grantWriteAccess);
 
   if (cb) cb.addEventListener('change', function() {
     if (!cb.checked) {
@@ -1153,25 +1178,27 @@ function runNumbering(mode, token) {
       setNumStatus(mode === 'remove' ? numStr('numRemoved', { n: 0 }) : numStr('numUpToDate'));
       return;
     }
-    var done = 0, ok = 0, failed = 0, lastStatus = 0;
+    var done = 0, ok = 0, failed = 0, lastStatus = 0, lastMsg = '', denied = false;
     // One write at a time with a gap: the board's own badge requests share
     // the same rate limit, so bulk writes must leave plenty of headroom.
     return runInBatches(todo, 1, 400, function(c) {
       var desc = mode === 'remove'
         ? kbRemoveNumber(c.desc)
         : kbApplyNumber(c.desc, kbNumberLabel(cfg.prefix, c.idShort), cfg.position, noteLang);
+      if (denied) return Promise.resolve();  // stop hammering after a 401
       if (desc.length > 16384) { done++; return Promise.resolve(); }
       return kbPutDesc(API_KEY, token, c.id, desc).then(function(res) {
         done++;
-        if (res.ok) ok++; else { failed++; lastStatus = res.status; }
+        if (res.ok) ok++; else { failed++; lastStatus = res.status; lastMsg = res.message || ''; }
+        if (res.status === 401) denied = true;
         setNumStatus(numStr('numWorking', { d: done, n: todo.length }));
       });
     }).then(function() {
-      if (failed && lastStatus === 401) {
-        tokenHasWrite = false;
-        setNumStatus(numStr('numAuthNeeded'));
+      if (denied) {
+        setNumStatus(numStr('numAuthNeeded') + (lastMsg ? ' (401: ' + lastMsg + ')' : ''));
+        showGrantButton(true);
       } else if (failed) {
-        setNumStatus(numStr('numFailed', { ok: ok, f: failed, code: lastStatus }));
+        setNumStatus(numStr('numFailed', { ok: ok, f: failed, code: lastStatus + (lastMsg ? ': ' + lastMsg : '') }));
       } else {
         setNumStatus(mode === 'remove' ? numStr('numRemoved', { n: ok }) : numStr('numDone', { n: ok }));
       }
