@@ -194,7 +194,15 @@
     t.sizeTo('#kb-wrap');
   }
 
+  var workdaysOn = false;
+
   function loadCard(token, L) {
+    return t.get('board', 'shared', 'workdays').then(function(wd) {
+      workdaysOn = kbNormalizeWorkdays(wd).enabled;
+    }, function() {}).then(function() { return loadCardInner(token, L); });
+  }
+
+  function loadCardInner(token, L) {
     return Promise.all([
       t.card('id', 'idList', 'attachments', 'shortLink'),
       t.get('board', 'shared', 'listSettings'),
@@ -281,8 +289,8 @@
         : (currentListName || L.unknown));
 
     var frozenAt         = isDone ? new Date(lastMove.date) : new Date();
-    var currentStageTime = frozenAt - new Date(lastMove.date);
-    var totalTime        = Date.now() - new Date(ordered[0].date);
+    var currentStageTime = kbWorkMs(lastMove.date, frozenAt, workdaysOn);
+    var totalTime        = kbWorkMsSince(ordered[0].date, workdaysOn);
 
     var createdBy = '';
     if (createAction && createAction.memberCreator) {
@@ -553,16 +561,16 @@
       var init = (createAction.data && createAction.data.list)
         ? createAction.data.list.name
         : (moveActions[0].data.listBefore && moveActions[0].data.listBefore.name);
-      if (init) timeline.push({ list: init, date: new Date(createAction.date), duration: new Date(moveActions[0].date) - new Date(createAction.date) });
+      if (init) timeline.push({ list: init, date: new Date(createAction.date), duration: kbWorkMs(createAction.date, moveActions[0].date, workdaysOn) });
     }
     for (var i = 0; i < moveActions.length - 1; i++) {
-      var diff = new Date(moveActions[i+1].date) - new Date(moveActions[i].date);
-      if (diff > 0) timeline.push({ list: moveActions[i].data.listAfter.name, date: new Date(moveActions[i].date), duration: diff });
+      var diff = kbWorkMs(moveActions[i].date, moveActions[i+1].date, workdaysOn);
+      if (diff > 0 || new Date(moveActions[i+1].date) > new Date(moveActions[i].date)) timeline.push({ list: moveActions[i].data.listAfter.name, date: new Date(moveActions[i].date), duration: diff });
     }
     if (moveActions.length) {
       var last    = moveActions[moveActions.length - 1];
       var endTime = isDone ? new Date(last.date) : new Date();
-      var dur     = endTime - new Date(last.date);
+      var dur     = kbWorkMs(last.date, endTime, workdaysOn);
       if (dur >= 0) timeline.push({ list: last.data.listAfter.name, date: new Date(last.date), duration: dur });
     }
     return timeline;

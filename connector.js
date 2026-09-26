@@ -40,11 +40,13 @@ TrelloPowerUp.initialize({
         return Promise.all([
           t.card('id', 'idList'),
           t.get('board', 'shared', 'listSettings'),
-          t.lists('id', 'name')
+          t.lists('id', 'name'),
+          t.get('board', 'shared', 'workdays')
         ]).then(function(results) {
           var card         = results[0];
           var listSettings = results[1] || {};
           var lists        = results[2] || [];
+          var workdaysOn   = kbNormalizeWorkdays(results[3]).enabled;
 
           var currentListObj  = lists.find(function(l) { return l.id === card.idList; });
           var currentListName = currentListObj ? currentListObj.name : '';
@@ -69,7 +71,7 @@ TrelloPowerUp.initialize({
           .then(function(data) {
             var dateStr = (data && data.length) ? data[0].date : null;
             if (!dateStr) return [];
-            return makeBadge(dateStr, setting.threshold);
+            return makeBadge(dateStr, setting.threshold, workdaysOn);
           });
         });
       })
@@ -239,8 +241,10 @@ function retryPlaceholderBadge() {
   return [{ text: '…', color: 'light-gray', refresh: 15 + Math.floor(Math.random() * 30) }];
 }
 
-function makeBadge(dateStr, threshold) {
-  var diff = Date.now() - new Date(dateStr);
+function makeBadge(dateStr, threshold, workdaysOn) {
+  // With working days on, both the age and the red-flag threshold are
+  // counted in working time (a 3-day limit means 3 working days).
+  var diff = kbWorkMsSince(dateStr, workdaysOn);
   var thresholdMs = threshold ? threshold * 24 * 60 * 60 * 1000 : 3 * 24 * 60 * 60 * 1000;
   var isRed = diff > thresholdMs;
   return [{

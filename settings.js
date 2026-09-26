@@ -48,6 +48,8 @@ var STRINGS = {
     numAuthNeeded: "Write permission is needed to add numbers to card descriptions.",
     numError: "Could not update cards. Please try again.",
     numColor: "Badge color",
+    wdLabel: "Count working days only",
+    wdSub: "Saturdays and Sundays are not counted in badges, the card panel, red flags or exports.",
     subTitle: "Subtasks",
     subEnable: "Enable main tasks & subtasks",
     subDisplay: "Badge shows",
@@ -107,6 +109,8 @@ var STRINGS = {
     numAuthNeeded: "Açıklamalara numara eklemek için yazma izni gerekiyor.",
     numError: "Kartlar güncellenemedi. Lütfen tekrar deneyin.",
     numColor: "Badge rengi",
+    wdLabel: "Sadece iş günlerini say",
+    wdSub: "Cumartesi ve pazar; badge, kart paneli, kırmızı işaret ve export hesaplarına dahil edilmez.",
     subTitle: "Alt Görevler",
     subEnable: "Ana görev ve alt görevleri aç",
     subDisplay: "Badge içeriği",
@@ -166,6 +170,8 @@ var STRINGS = {
     numAuthNeeded: "Se necesita permiso de escritura para añadir números a las descripciones.",
     numError: "No se pudieron actualizar las tarjetas. Inténtalo de nuevo.",
     numColor: "Color de insignia",
+    wdLabel: "Contar solo días laborables",
+    wdSub: "Los sábados y domingos no se cuentan en insignias, el panel, las alertas ni las exportaciones.",
     subTitle: "Subtareas",
     subEnable: "Activar tareas principales y subtareas",
     subDisplay: "La insignia muestra",
@@ -225,6 +231,8 @@ var STRINGS = {
     numAuthNeeded: "É necessária permissão de escrita para adicionar números às descrições.",
     numError: "Não foi possível atualizar os cartões. Tente novamente.",
     numColor: "Cor do badge",
+    wdLabel: "Contar apenas dias úteis",
+    wdSub: "Sábados e domingos não são contados nos badges, no painel, nos alertas nem nas exportações.",
     subTitle: "Subtarefas",
     subEnable: "Ativar tarefas principais e subtarefas",
     subDisplay: "O badge mostra",
@@ -299,6 +307,7 @@ function applyStrings() {
   applyNumberingStrings();
   updateAccordionMeta();
   if (typeof renderSubtasks === 'function' && typeof subtasksCfg !== 'undefined') renderSubtasks();
+  if (typeof renderWorkdays === 'function' && typeof workdaysCfg !== 'undefined') renderWorkdays();
 }
 
 function updatePill(input) {
@@ -447,6 +456,7 @@ function fetchListsWithRetry(boardId, token, attempt) {
 t.render(function() {
   var restApi = t.getRestApi();
   loadNumbering();
+  loadWorkdays();
   loadSubtasks();
   return restApi.getToken().then(function(token) {
     if (!token) {
@@ -596,9 +606,9 @@ function buildExportRows(cards, customFields, listMap, actionsByCard) {
 
     var isDone = setting.done || false;
     var currentStageMs = lastMove
-      ? ((isDone ? new Date(lastMove.date) : new Date()) - new Date(lastMove.date))
+      ? kbWorkMs(lastMove.date, isDone ? new Date(lastMove.date) : new Date(), workdaysCfg.enabled)
       : 0;
-    var cardAgeMs = actions.length ? (Date.now() - new Date(actions[0].date)) : 0;
+    var cardAgeMs = actions.length ? kbWorkMsSince(actions[0].date, workdaysCfg.enabled) : 0;
 
     var createdBy = '';
     if (createAction && createAction.memberCreator) {
@@ -1048,6 +1058,7 @@ function renderNumbering() {
   applyNumberingStrings();
   updateAccordionMeta();
   if (typeof renderSubtasks === 'function' && typeof subtasksCfg !== 'undefined') renderSubtasks();
+  if (typeof renderWorkdays === 'function' && typeof workdaysCfg !== 'undefined') renderWorkdays();
 }
 
 function setNumStatus(text) {
@@ -1372,3 +1383,29 @@ function bindSubtaskControls() {
 }
 
 document.addEventListener('DOMContentLoaded', bindSubtaskControls);
+
+/* ===================== WORKING DAYS ===================== */
+
+var workdaysCfg = kbNormalizeWorkdays(null);
+
+function renderWorkdays() {
+  var cb = document.getElementById('wd-enabled');
+  if (cb) cb.checked = workdaysCfg.enabled;
+  setText('wd-label', numStr('wdLabel'));
+  setText('wd-sub', numStr('wdSub'));
+}
+
+function loadWorkdays() {
+  t.get('board', 'shared', 'workdays').then(function(cfg) {
+    workdaysCfg = kbNormalizeWorkdays(cfg);
+    renderWorkdays();
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var cb = document.getElementById('wd-enabled');
+  if (cb) cb.addEventListener('change', function() {
+    workdaysCfg.enabled = cb.checked;
+    t.set('board', 'shared', 'workdays', workdaysCfg);  // saved immediately
+  });
+});

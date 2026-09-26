@@ -187,6 +187,11 @@
     <details class="acc" data-key="lists" open>
       <summary><span class="section-title" id="lists-title">List Settings</span><span class="chev"></span></summary>
       <div class="acc-body">
+        <div class="num-row" style="margin-bottom:8px;">
+          <div class="num-label"><span id="wd-label">Count working days only</span>
+            <div class="num-sub" id="wd-sub"></div></div>
+          <label class="toggle"><input type="checkbox" id="wd-enabled"><span class="slider"></span></label>
+        </div>
         <div class="help-box">
           <div class="help-row" id="help-flag"></div>
           <div class="help-row" id="help-done"></div>
@@ -292,6 +297,7 @@
       </div>
     </details>
   </div>
+  <script src="/workdays.js"></script>
   <script src="/numbering.js"></script>
   <script src="/subtasks.js"></script>
   <script src="/settings.js"></script>
