@@ -245,7 +245,7 @@ function makeBadge(dateStr, threshold, workdaysOn) {
   // With working days on, both the age and the red-flag threshold are
   // counted in working time (a 3-day limit means 3 working days).
   var diff = kbWorkMsSince(dateStr, workdaysOn);
-  var thresholdMs = threshold ? threshold * 24 * 60 * 60 * 1000 : 3 * 24 * 60 * 60 * 1000;
+  var thresholdMs = (threshold || KB_DEFAULT_THRESHOLD_DAYS) * 24 * 60 * 60 * 1000;
   var isRed = diff > thresholdMs;
   return [{
     text:    formatTime(diff),

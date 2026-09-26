@@ -7,6 +7,9 @@
 
 var KB_WEEKEND_DAYS = [0, 6]; // Sunday, Saturday (Date#getDay)
 
+// Red-flag limit used for lists that have no day limit of their own.
+var KB_DEFAULT_THRESHOLD_DAYS = 3;
+
 function kbNormalizeWorkdays(cfg) {
   return { enabled: !!(cfg && cfg.enabled === true) };
 }

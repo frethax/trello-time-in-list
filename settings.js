@@ -13,7 +13,9 @@ var STRINGS = {
     save:        'Save Settings',
     loading:     'Loading...',
     error:       'Could not load lists. Please reconnect your account.',
-    helpFlag:    '🚩 Flag — Cards in this list will turn red after the set number of days.',
+    helpFlag:    "🚩 Flag — Cards in this list turn red after the set number of days. Empty lists use the default (3 days).",
+    defaultTag:  "default",
+    defaultHint: "Leave empty to use the default of 3 days",
     helpDone:    '✓ Done — Cards moved here stop accumulating time. Their timer freezes.',
     helpIgnore:  '⊘ Ignore — Cards in this list are hidden from the Kanbrain panel and badge.',
     exportTitle:    'Export Data',
@@ -74,7 +76,9 @@ var STRINGS = {
     save:        'Kaydet',
     loading:     'Yükleniyor...',
     error:       'Listeler yüklenemedi. Lütfen hesabınızı yeniden bağlayın.',
-    helpFlag:    '🚩 İşaretle — Bu listedeki kartlar belirlenen gün sayısını aşınca kırmızıya döner.',
+    helpFlag:    "🚩 İşaretle — Bu listedeki kartlar belirlenen gün sayısını aşınca kırmızıya döner. Boş bırakılan listelerde varsayılan 3 gün geçerlidir.",
+    defaultTag:  "varsayılan",
+    defaultHint: "Boş bırakılırsa varsayılan 3 gün kullanılır",
     helpDone:    '✓ Tamamlandı — Buraya taşınan kartların süresi dondurulur. Sayaç durur.',
     helpIgnore:  '⊘ Yoksay — Bu listedeki kartlar Kanbrain panelinde ve badge\'de gösterilmez.',
     exportTitle:    'Veri Dışa Aktar',
@@ -135,7 +139,9 @@ var STRINGS = {
     save:        'Guardar',
     loading:     'Cargando...',
     error:       'No se pudieron cargar las listas.',
-    helpFlag:    '🚩 Marcar — Las tarjetas en esta lista se volverán rojas después del número de días establecido.',
+    helpFlag:    "🚩 Marcar — Las tarjetas en esta lista se vuelven rojas después del número de días establecido. Si está vacío se usa el valor predeterminado (3 días).",
+    defaultTag:  "predeterminado",
+    defaultHint: "Déjalo vacío para usar el valor predeterminado de 3 días",
     helpDone:    '✓ Hecho — Las tarjetas movidas aquí dejan de acumular tiempo. El temporizador se congela.',
     helpIgnore:  '⊘ Ignorar — Las tarjetas en esta lista se ocultan del panel y la insignia de Kanbrain.',
     exportTitle:    'Exportar Datos',
@@ -196,7 +202,9 @@ var STRINGS = {
     save:        'Salvar',
     loading:     'Carregando...',
     error:       'Não foi possível carregar as listas.',
-    helpFlag:    '🚩 Sinalizar — Os cartões nesta lista ficarão vermelhos após o número de dias definido.',
+    helpFlag:    "🚩 Sinalizar — Os cartões nesta lista ficam vermelhos após o número de dias definido. Listas vazias usam o padrão (3 dias).",
+    defaultTag:  "padrão",
+    defaultHint: "Deixe vazio para usar o padrão de 3 dias",
     helpDone:    '✓ Concluído — Os cartões movidos aqui param de acumular tempo. O cronômetro congela.',
     helpIgnore:  '⊘ Ignorar — Os cartões nesta lista ficam ocultos do painel e do badge do Kanbrain.',
     exportTitle:    'Exportar Dados',
@@ -312,11 +320,10 @@ function applyStrings() {
 
 function updatePill(input) {
   var pill = input.closest ? input.closest('.flag-pill') : input.parentNode;
-  if (input.value && parseInt(input.value) > 0) {
-    pill.className = 'flag-pill active';
-  } else {
-    pill.className = 'flag-pill';
-  }
+  var custom = input.value && parseInt(input.value) > 0;
+  pill.className = custom ? 'flag-pill active' : 'flag-pill';
+  var tag = pill.querySelector('.default-tag');
+  if (tag) tag.style.display = custom ? 'none' : '';
 }
 
 function makeToggle(checked, name, cls) {
@@ -361,7 +368,7 @@ function renderLists() {
     var input = document.createElement('input');
     input.type = 'number';
     input.min = '1'; input.max = '999';
-    input.placeholder = '—';
+    input.placeholder = String(KB_DEFAULT_THRESHOLD_DAYS);  // shown grey = default in effect
     input.value = saved.threshold || '';
     input.dataset.name = list.name;
     input.className = 'threshold-input';
@@ -369,9 +376,15 @@ function renderLists() {
     var daysLbl = document.createElement('span');
     daysLbl.className = 'control-label';
     daysLbl.innerText = s.days;
+    var defTag = document.createElement('span');
+    defTag.className = 'default-tag';
+    defTag.innerText = s.defaultTag;
+    defTag.style.display = saved.threshold ? 'none' : '';
+    pill.title = s.defaultHint;
     pill.appendChild(flagIcon);
     pill.appendChild(input);
     pill.appendChild(daysLbl);
+    pill.appendChild(defTag);
 
     var sep1 = document.createElement('div');
     sep1.className = 'separator';
