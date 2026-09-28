@@ -640,7 +640,17 @@ function buildExportRows(cards, customFields, listMap, actionsByCard) {
       if (activityCount[name] > mostActiveCount) { mostActive = name; mostActiveCount = activityCount[name]; }
     });
 
+    // Card number: prefixed label (e.g. KB-42) when numbering is on,
+    // plain Trello short id otherwise.
+    var cardNo = '';
+    if (card.idShort !== undefined && card.idShort !== null) {
+      cardNo = numberingCfg.enabled
+        ? kbNumberLabel(numberingCfg.prefix, card.idShort)
+        : card.idShort;
+    }
+
     var row = {
+      'Card #':        cardNo,
       'Card Name':     card.name,
       'List':          listName,
       'Current Stage': formatTime(currentStageMs),
@@ -906,7 +916,7 @@ function runExport(format) {
   //    (which misses archived lists and can be stale).
   var cardsUrl =
     'https://api.trello.com/1/boards/' + currentBoardId + '/cards/open' +
-    '?fields=name,idList,due,dueComplete' +
+    '?fields=name,idShort,idList,due,dueComplete' +
     '&list=true&list_fields=name' +
     '&customFieldItems=true' +
     '&key=' + API_KEY + '&token=' + currentToken;
