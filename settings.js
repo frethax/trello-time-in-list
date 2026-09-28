@@ -606,7 +606,6 @@ function buildExportRows(cards, customFields, listMap, actionsByCard) {
     // Prefer the list name embedded on the card; fall back to listMap.
     var listName = (card.list && card.list.name) ? card.list.name : (listMap[card.idList] || '');
     var setting  = listSettings[listName] || {};
-    if (setting.ignore) return; // ignored lists excluded, consistent with panel/badge
 
     var raw = actionsByCard[card.id] || [];
     // actions come newest-first from API; reverse to oldest-first
@@ -615,13 +614,27 @@ function buildExportRows(cards, customFields, listMap, actionsByCard) {
     var createAction = actions.find(function(a) { return a.type === 'createCard'; });
     var lastMove     = moveActions.length
       ? moveActions[moveActions.length - 1]
-      : (createAction || actions[actions.length - 1]);
+      : (createAction || actions[0]);
+
+    // Archived cards: timers freeze at the moment the card was archived.
+    var isArchived = !!card.closed;
+    var listArchived = !!(card.list && card.list.closed);
+    var endDate = new Date();
+    if (isArchived) {
+      var closeActions = actions.filter(function(a) {
+        return a.data && a.data.card && a.data.card.closed === true &&
+               a.data.old && a.data.old.closed === false;
+      });
+      if (closeActions.length) endDate = new Date(closeActions[closeActions.length - 1].date);
+    }
 
     var isDone = setting.done || false;
     var currentStageMs = lastMove
-      ? kbWorkMs(lastMove.date, isDone ? new Date(lastMove.date) : new Date(), workdaysCfg.enabled)
+      ? kbWorkMs(lastMove.date, isDone ? new Date(lastMove.date) : endDate, workdaysCfg.enabled)
       : 0;
-    var cardAgeMs = actions.length ? kbWorkMsSince(actions[0].date, workdaysCfg.enabled) : 0;
+    var cardAgeMs = actions.length ? kbWorkMs(actions[0].date, endDate, workdaysCfg.enabled) : 0;
+
+    var status = isArchived ? 'Archived' : (listArchived ? 'Archived list' : 'Open');
 
     var createdBy = '';
     if (createAction && createAction.memberCreator) {
@@ -653,6 +666,7 @@ function buildExportRows(cards, customFields, listMap, actionsByCard) {
       'Card #':        cardNo,
       'Card Name':     card.name,
       'List':          listName,
+      'Status':        status,
       'Current Stage': formatTime(currentStageMs),
       'Card Age':      formatTime(cardAgeMs),
       'Created By':    createdBy,
@@ -915,9 +929,9 @@ function runExport(format) {
   //    list name directly and don't depend on boardLists being complete
   //    (which misses archived lists and can be stale).
   var cardsUrl =
-    'https://api.trello.com/1/boards/' + currentBoardId + '/cards/open' +
-    '?fields=name,idShort,idList,due,dueComplete' +
-    '&list=true&list_fields=name' +
+    'https://api.trello.com/1/boards/' + currentBoardId + '/cards/all' +
+    '?fields=name,idShort,idList,due,dueComplete,closed' +
+    '&list=true&list_fields=name,closed' +
     '&customFieldItems=true' +
     '&key=' + API_KEY + '&token=' + currentToken;
 
@@ -941,12 +955,8 @@ function runExport(format) {
       return;
     }
 
-    // Only need actions for cards we'll actually export (skip ignored lists)
-    var exportCards = cards.filter(function(card) {
-      var ln = (card.list && card.list.name) ? card.list.name : (listMap[card.idList] || '');
-      var setting = listSettings[ln] || {};
-      return !setting.ignore;
-    });
+    // Export everything: open + archived cards, ignored lists included.
+    var exportCards = cards;
 
     // 3) Per-card actions — same proven approach as the card panel.
     //    Each fetch is independent; one failing leaves that card's timers blank
@@ -956,7 +966,7 @@ function runExport(format) {
     return runInBatches(exportCards, 8, 350, function(card) {
       var url =
         'https://api.trello.com/1/cards/' + card.id +
-        '/actions?filter=updateCard:idList,createCard' +
+        '/actions?filter=updateCard:idList,createCard,updateCard:closed' +
         '&memberCreator=true&memberCreator_fields=fullName,username' +
         '&limit=1000&key=' + API_KEY + '&token=' + currentToken;
       return safeFetchJson(url).then(function(actions) {
