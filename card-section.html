@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  <link rel="stylesheet" href="/resource-planning.css">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -151,12 +152,28 @@
   </style>
 </head>
 <body>
-  <div id="kb-wrap"><div class="kb-subbar" id="kb-subbar"></div><div id="root"><div class="empty">⏳ Loading...</div></div></div>
+  <div id="kb-wrap"><div class="kb-subbar" id="kb-subbar"></div><div id="root"><div class="empty">⏳ Loading...</div></div>
+    <section id="kb-resource" class="kb-plan-panel" hidden aria-label="Resource Planning">
+      <div class="kb-plan-heading">Resource Planning</div>
+      <p class="kb-plan-note">Board admins only. Full weekdays, Monday to Friday.</p>
+      <div id="kb-plan-list" class="kb-plan-list"></div>
+      <form id="kb-plan-form" class="kb-plan-form">
+        <label>Member<select id="kb-plan-member" required></select></label>
+        <label>Start date<input id="kb-plan-start" type="date" required></label>
+        <label>End date<input id="kb-plan-end" type="date" required></label>
+        <button id="kb-plan-submit" class="primary" type="submit">Add assignment</button>
+        <button id="kb-plan-cancel" type="button" hidden>Cancel</button>
+      </form>
+      <div id="kb-plan-status" class="kb-plan-status" role="status" aria-live="polite"></div>
+    </section>
+  </div>
  <script src="/workdays.js"></script>
 <script src="/numbering.js"></script>
 <script src="/subtasks.js"></script>
 <script src="/api.js"></script>
 <script src="/ui.js"></script>
+<script src="/resource-planning.js"></script>
+<script src="/resource-planning-ui.js"></script>
 <script src="/section.js"></script>
 </body>
 </html>

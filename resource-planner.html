@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  <link rel="stylesheet" href="/resource-planning.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 20px; background: #f4f5f7; color: #172b4d; font: 13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    h1 { margin: 0 0 4px; font-size: 20px; }
+    .intro { margin: 0 0 18px; color: #5e6c84; }
+    .kb-plan-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .kb-plan-toolbar select { min-height: 30px; border: 1px solid #c1c7d0; border-radius: 5px; background: #fff; padding: 4px 8px; color: #172b4d; }
+    .kb-plan-toolbar button[aria-pressed="true"] { background: #e8f0ff; color: #0052cc; border-color: #0052cc; }
+    #period-label { min-width: 160px; text-align: center; font-weight: 700; }
+    .spacer { flex: 1; }
+    #planner-status { min-height: 18px; margin-bottom: 8px; color: #5e6c84; }
+    #planner-status.error { color: #bf2600; }
+    .timeline-scroll { overflow: auto; max-height: calc(100vh - 170px); background: #fff; border: 1px solid #dfe1e6; border-radius: 8px; }
+    .timeline-head, .timeline-row { display: flex; min-width: max-content; }
+    .timeline-head { position: sticky; top: 0; z-index: 3; background: #f4f5f7; border-bottom: 1px solid #dfe1e6; }
+    .member-head, .member-name { position: sticky; left: 0; z-index: 2; width: 165px; min-width: 165px; padding: 9px 10px; background: #fff; border-right: 1px solid #dfe1e6; font-weight: 600; }
+    .member-head { background: #f4f5f7; z-index: 4; }
+    .day-heads { display: grid; }
+    .day-head { padding: 8px 0; border-right: 1px solid #dfe1e6; text-align: center; font-size: 11px; color: #5e6c84; }
+    .day-head.weekend, .day-shade.weekend { background: #f4f5f7; }
+    .timeline-row { border-bottom: 1px solid #dfe1e6; }
+    .timeline-row:last-child { border-bottom: 0; }
+    .member-name { display: flex; align-items: center; overflow: hidden; text-overflow: ellipsis; }
+    .days-grid { display: grid; position: relative; min-height: 38px; padding: 3px 0; }
+    .day-shade { border-right: 1px solid #ebecf0; grid-row: 1 / -1; z-index: 0; }
+    .assignment { align-self: center; z-index: 1; display: block; margin: 2px 2px; padding: 5px 7px; border-radius: 4px; background: #e8f0ff; color: #0747a6; border: 1px solid #b3d4ff; font-size: 11px; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .assignment:hover, .assignment:focus-visible { background: #deebff; outline: 2px solid #0052cc; outline-offset: -2px; }
+    .assignment.conflict { background: #fff0ed; color: #bf2600; border-color: #ffbdad; }
+    .legend { display: flex; gap: 14px; margin-top: 10px; color: #5e6c84; font-size: 11px; }
+    .legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .swatch { width: 12px; height: 12px; border: 1px solid #b3d4ff; background: #e8f0ff; border-radius: 2px; }
+    .swatch.conflict { border-color: #ffbdad; background: #fff0ed; }
+  </style>
+</head>
+<body>
+  <h1>Resource Planner</h1>
+  <p class="intro">Board assignments by member. Dates include full weekdays only; holidays are included.</p>
+  <div class="kb-plan-toolbar">
+    <button id="prev" type="button" aria-label="Previous period">‹</button>
+    <span id="period-label"></span>
+    <button id="next" type="button" aria-label="Next period">›</button>
+    <button id="week" type="button">Week</button>
+    <button id="month" type="button">Month</button>
+    <span class="spacer"></span>
+    <label for="member-filter">Member</label>
+    <select id="member-filter"><option value="">All members</option></select>
+    <button id="refresh" type="button">Refresh</button>
+  </div>
+  <div id="planner-status" role="status" aria-live="polite">Loading…</div>
+  <div class="timeline-scroll"><div id="timeline"></div></div>
+  <div class="legend"><span><i class="swatch"></i> Assignment</span><span><i class="swatch conflict"></i> Overlapping workdays</span></div>
+  <script src="/resource-planning.js"></script>
+  <script src="/resource-planning-ui.js"></script>
+  <script src="/resource-planner.js"></script>
+</body>
+</html>

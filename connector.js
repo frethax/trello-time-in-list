@@ -130,6 +130,20 @@ TrelloPowerUp.initialize({
           title: 'Kanbrain Settings'
         });
       }
+    }, {
+      text: 'Resource Planner',
+      icon: {
+        light: 'https://trello-time-in-list.vercel.app/icon.svg',
+        dark: 'https://trello-time-in-list.vercel.app/icon-white.svg'
+      },
+      condition: 'admin',
+      callback: function(t) {
+        return t.modal({
+          url: t.signUrl('https://trello-time-in-list.vercel.app/resource-planner.html'),
+          accentColor: '#0052cc', height: 720, fullscreen: true,
+          title: 'Resource Planner'
+        });
+      }
     }];
   }
 

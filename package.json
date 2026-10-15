@@ -1,0 +1,8 @@
+{
+  "name": "kanbrain-power-up",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test"
+  }
+}
