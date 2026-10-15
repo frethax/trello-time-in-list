@@ -1,4 +1,5 @@
 const planning = require('../resource-planning');
+const store = require('./planning-store');
 
 const ID = /^[0-9a-f]{24}$/i;
 const TRELLO = 'https://api.trello.com/1';
@@ -19,30 +20,6 @@ async function trello(path, token) {
   return response.json();
 }
 
-async function redis(command) {
-  const response = await fetch(process.env.UPSTASH_REDIS_REST_URL, {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + process.env.UPSTASH_REDIS_REST_TOKEN,
-      'Content-Type': 'application/json' },
-    body: JSON.stringify(command)
-  });
-  if (!response.ok) throw error(503, 'Planning storage is unavailable');
-  const body = await response.json();
-  if (body.error) throw error(503, 'Planning storage is unavailable');
-  return body.result;
-}
-
-function key(boardId) { return 'kanbrain:planning:v1:' + boardId; }
-function parseHash(values) {
-  const result = [];
-  for (let i = 1; i < (values || []).length; i += 2) {
-    try {
-      const assignment = JSON.parse(values[i]);
-      if (planning.normalizeDates(assignment.dates)) result.push(assignment);
-    } catch (_) { /* damaged entry */ }
-  }
-  return result.sort((a, b) => a.dates[0].localeCompare(b.dates[0]));
-}
 function send(res, status, data) { res.status(status).json(data); }
 
 async function handler(req, res) {
@@ -53,8 +30,10 @@ async function handler(req, res) {
     return send(res, 405, { error: 'Method not allowed' });
   }
   try {
-    if (!process.env.TRELLO_API_KEY || !process.env.UPSTASH_REDIS_REST_URL ||
-        !process.env.UPSTASH_REDIS_REST_TOKEN) throw error(503, 'Planning is not configured');
+    if (!process.env.TRELLO_API_KEY ||
+        (!process.env.BLOB_STORE_ID && !process.env.BLOB_READ_WRITE_TOKEN)) {
+      throw error(503, 'Planning is not configured');
+    }
     const boardId = req.query.boardId;
     if (typeof boardId !== 'string' || !ID.test(boardId)) throw error(400, 'Invalid board');
     const header = req.headers.authorization || '';
@@ -75,12 +54,12 @@ async function handler(req, res) {
       const cardId = req.query.cardId;
       if (cardId && (typeof cardId !== 'string' || !ID.test(cardId))) throw error(400, 'Invalid card');
       const [stored, members, cards] = await Promise.all([
-        redis(['HGETALL', key(boardId)]),
+        store.read(boardId),
         trello('/boards/' + boardId + '/members?fields=id,fullName,username', token),
         cardId ? Promise.resolve(null) : trello('/boards/' + boardId + '/cards/all?fields=id,name,shortUrl,closed', token)
       ]);
       const currentCards = new Map((cards || []).map(c => [c.id, c]));
-      const assignments = parseHash(stored).filter(a => !cardId || a.cardId === cardId).map(a => {
+      const assignments = stored.assignments.filter(a => !cardId || a.cardId === cardId).map(a => {
         const card = currentCards.get(a.cardId);
         return cardId ? a : { ...a, archived: !card || !!card.closed,
           cardName: card ? card.name : a.cardName,
@@ -96,11 +75,14 @@ async function handler(req, res) {
           !/^(?:[0-9a-f]{24}:[0-9a-f]{24}|[0-9a-f-]{36})$/i.test(body.id)) {
         throw error(400, 'Invalid assignment');
       }
-      const stored = await redis(['HGET', key(boardId), body.id]);
-      if (!stored) throw error(404, 'Assignment not found');
-      var previous = JSON.parse(stored);
+      const stored = await store.read(boardId);
+      var previous = stored.assignments.find(a => a.id === body.id);
+      if (!previous) throw error(404, 'Assignment not found');
       if (req.method === 'DELETE') {
-        await redis(['HDEL', key(boardId), body.id]);
+        await store.update(boardId, assignments => {
+          if (!assignments.some(a => a.id === body.id)) throw error(404, 'Assignment not found');
+          return { assignments: assignments.filter(a => a.id !== body.id) };
+        });
         return send(res, 200, { deleted: true });
       }
     }
@@ -118,21 +100,23 @@ async function handler(req, res) {
     ]);
     if (card.idBoard !== boardId || card.closed) throw error(400, 'Card is not open on this board');
     if (!members.some(m => m.id === memberId)) throw error(400, 'Member is not on this board');
-    if (req.method === 'POST') {
-      const existing = parseHash(await redis(['HGETALL', key(boardId)]));
-      if (existing.some(a => a.cardId === cardId && a.memberId === memberId)) {
-        throw error(409, 'This member already has a plan on this card; edit it instead');
-      }
-    }
     const assignment = { id: req.method === 'PUT' ? previous.id : cardId + ':' + memberId,
       cardId, cardName: card.name, cardUrl: card.shortUrl,
       memberId, dates };
-    if (req.method === 'POST') {
-      const inserted = await redis(['HSETNX', key(boardId), assignment.id, JSON.stringify(assignment)]);
-      if (!inserted) throw error(409, 'This member already has a plan on this card; edit it instead');
-    } else {
-      await redis(['HSET', key(boardId), assignment.id, JSON.stringify(assignment)]);
-    }
+    await store.update(boardId, assignments => {
+      const index = assignments.findIndex(a => a.id === assignment.id);
+      if (req.method === 'POST') {
+        if (index !== -1) throw error(409, 'This member already has a plan on this card; edit it instead');
+        return { assignments: [...assignments, assignment] };
+      }
+      if (index === -1) throw error(404, 'Assignment not found');
+      if (JSON.stringify(assignments[index]) !== JSON.stringify(previous)) {
+        throw error(409, 'Planning changed; please reload and try again');
+      }
+      const updated = assignments.slice();
+      updated[index] = assignment;
+      return { assignments: updated };
+    });
     return send(res, req.method === 'POST' ? 201 : 200, { assignment });
   } catch (e) {
     // Never return tokens, Trello URLs or storage credentials in errors.
@@ -141,4 +125,3 @@ async function handler(req, res) {
 }
 
 module.exports = handler;
-module.exports._test = { parseHash };

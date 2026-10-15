@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const planning = require('../resource-planning');
 const handler = require('../api/resource-planning');
+const store = require('../api/planning-store');
 
 const boardId = 'aaaaaaaaaaaaaaaaaaaaaaaa';
 const cardId = 'bbbbbbbbbbbbbbbbbbbbbbbb';
@@ -36,31 +37,26 @@ test('week and month bounds and exact selected-day conflicts', () => {
 
 test('API blocks non-admin reads and writes, then supports CRUD for an admin', async () => {
   const originalFetch = global.fetch;
+  const originalRead = store.read, originalUpdate = store.update;
   const originalEnv = {
     TRELLO_API_KEY: process.env.TRELLO_API_KEY,
-    UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
-    UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN
+    BLOB_STORE_ID: process.env.BLOB_STORE_ID
   };
   process.env.TRELLO_API_KEY = 'test-key';
-  process.env.UPSTASH_REDIS_REST_URL = 'https://redis.example.test';
-  process.env.UPSTASH_REDIS_REST_TOKEN = 'test-secret';
-  let role = 'normal', redisCalls = 0, cardBoard = boardId, cardClosed = false;
-  const rows = new Map();
+  process.env.BLOB_STORE_ID = 'test-store';
+  let role = 'normal', storeCalls = 0, cardBoard = boardId, cardClosed = false;
+  let rows = [];
+  store.read = async () => { storeCalls++; return { assignments: rows.slice() }; };
+  store.update = async (_, change) => {
+    storeCalls++;
+    const next = change(rows.slice());
+    rows = next.assignments;
+    return next.result;
+  };
   global.fetch = async (url, options) => {
     const path = String(url);
     let result;
-    if (path.startsWith('https://redis.example.test')) {
-      redisCalls++;
-      const [command, , field, value] = JSON.parse(options.body);
-      if (command === 'HGETALL') result = [...rows].flatMap(([id, data]) => [id, data]);
-      if (command === 'HGET') result = rows.get(field) || null;
-      if (command === 'HSETNX') {
-        result = rows.has(field) ? 0 : 1;
-        if (result) rows.set(field, value);
-      }
-      if (command === 'HSET') { rows.set(field, value); result = 1; }
-      if (command === 'HDEL') { rows.delete(field); result = 1; }
-    } else if (path.includes('/members/me')) result = { id: adminId };
+    if (path.includes('/members/me')) result = { id: adminId };
     else if (path.includes('/memberships')) result = [{ idMember: adminId, memberType: role }];
     else if (path.includes('/boards/' + boardId + '/members')) result = [{ id: memberId, fullName: 'Casey' }];
     else if (path.includes('/boards/' + boardId + '/cards/all')) result = [{
@@ -70,7 +66,7 @@ test('API blocks non-admin reads and writes, then supports CRUD for an admin', a
       idBoard: cardBoard, name: 'A card', shortUrl: 'https://trello.com/c/abc123', closed: cardClosed
     };
     else throw new Error('Unexpected URL ' + path);
-    return { ok: true, json: async () => path.startsWith('https://redis.example.test') ? { result } : result };
+    return { ok: true, json: async () => result };
   };
   async function request(method, body) {
     let status, data;
@@ -82,7 +78,7 @@ test('API blocks non-admin reads and writes, then supports CRUD for an admin', a
   try {
     assert.equal((await request('GET')).status, 403);
     assert.equal((await request('POST', { cardId, memberId, dates: ['2026-10-19'] })).status, 403);
-    assert.equal(redisCalls, 0);
+    assert.equal(storeCalls, 0);
     role = 'admin';
     assert.equal((await request('POST', { cardId, memberId, dates: ['2026-10-17'] })).status, 400);
     assert.equal((await request('POST', { cardId, memberId: adminId, dates: ['2026-10-19'] })).status, 400);
@@ -103,14 +99,47 @@ test('API blocks non-admin reads and writes, then supports CRUD for an admin', a
     role = 'normal';
     assert.equal((await request('GET')).status, 403);
     assert.equal((await request('DELETE', { id })).status, 403);
-    assert.equal(rows.size, 1);
+    assert.equal(rows.length, 1);
     role = 'admin';
     assert.equal((await request('DELETE', { id })).status, 200);
     assert.equal((await request('GET')).data.assignments.length, 0);
   } finally {
     global.fetch = originalFetch;
+    store.read = originalRead;
+    store.update = originalUpdate;
     for (const [key, value] of Object.entries(originalEnv)) {
       if (value === undefined) delete process.env[key]; else process.env[key] = value;
     }
   }
+});
+
+test('private Blob store retries a concurrent board update without losing assignments', async () => {
+  class BlobPreconditionFailedError extends Error {}
+  let document = null, etag = 0, conflictOnce = true;
+  const fakeBlob = {
+    BlobPreconditionFailedError,
+    async get(path, options) {
+      assert.match(path, /^kanbrain\/planning\/v1\/preview\//);
+      assert.equal(options.access, 'private');
+      assert.equal(options.useCache, false);
+      return document && { stream: new Response(JSON.stringify(document)).body, blob: { etag: String(etag) } };
+    },
+    async put(path, value, options) {
+      assert.equal(options.access, 'private');
+      if (document && !options.allowOverwrite) throw new Error('Blob already exists');
+      if (options.ifMatch && options.ifMatch !== String(etag)) throw new BlobPreconditionFailedError();
+      if (conflictOnce && document) {
+        conflictOnce = false;
+        document = { version: 1, assignments: [...document.assignments, { id: 'other' }] };
+        etag++;
+        throw new BlobPreconditionFailedError();
+      }
+      document = JSON.parse(value);
+      etag++;
+    }
+  };
+  const blobStore = store.createStore(fakeBlob);
+  await blobStore.update(boardId, assignments => ({ assignments: [...assignments, { id: 'first' }] }));
+  await blobStore.update(boardId, assignments => ({ assignments: [...assignments, { id: 'second' }] }));
+  assert.deepEqual((await blobStore.read(boardId)).assignments.map(a => a.id), ['first', 'other', 'second']);
 });
