@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kanbrain Resource Planning</title>
+<script src="https://p.trellocdn.com/power-up.min.js"></script>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172b4d;background:#fff}
+body{margin:0;padding:22px}h1{font-size:20px;margin:0 0 8px}.hint{color:#626f86;font-size:12px;margin:0 0 20px}
+.row{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:12px 0}.row>*{flex:1}label{display:block;font-size:12px;font-weight:600;margin-bottom:5px}
+input,select,button{font:inherit;border:1px solid #dfe1e6;border-radius:6px;padding:9px;box-sizing:border-box;min-height:36px}
+button{background:#0052cc;color:#fff;border:0;cursor:pointer;flex:0 0 auto}button.secondary{background:#e9edf5;color:#172b4d}
+button.danger{background:#ffebe6;color:#ae2a19}button:disabled{opacity:.5;cursor:not-allowed}
+table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px solid #e5e9f1;padding:9px;text-align:left}
+th{color:#626f86;background:#f7f8fa;position:sticky;top:0}a{color:#0052cc;text-decoration:none}
+.error{color:#ae2a19}.success{color:#216e4e}.muted{color:#626f86}
+.gridwrap{overflow:auto;max-height:470px;border:1px solid #e5e9f1;border-radius:8px}
+.day{text-align:center;min-width:46px!important}.weekend{background:#f2f3f6;color:#97a0af}
+.cell{background:#e7f3ff;border-radius:3px;color:#0747a6;font-weight:600;cursor:pointer}
+.overlap{background:#ffebe6;color:#ae2a19}.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
+#message{min-height:18px;font-size:12px;margin:8px 0}.allocation{display:inline-block;background:#e7f3ff;padding:3px 6px;border-radius:4px;margin:2px}
+</style></head><body>
+<h1 id="heading">Resource Planning</h1><p class="hint">Planned dates only. Monday–Friday are counted; weekends are excluded. Public holidays are not excluded.</p>
+<div id="message">Checking board administrator access…</div><main id="app" hidden>
+<section id="editor" hidden><h2 id="cardTitle">Task allocation</h2><form id="allocationForm">
+<div class="row"><div><label for="member">Board member</label><select id="member" required></select></div>
+<div><label for="start">Start date</label><input type="date" id="start" required></div>
+<div><label for="end">End date</label><input type="date" id="end" required></div>
+<button type="submit" id="save">Add assignment</button><button type="button" id="cancel" class="secondary" hidden>Cancel</button></div></form>
+<div class="gridwrap"><table><thead><tr><th>Member</th><th>Start</th><th>End</th><th>Working days</th><th>Actions</th></tr></thead><tbody id="allocations"></tbody></table></div></section>
+<section id="board" hidden><div class="toolbar"><label>Member <select id="filter"><option value="">All members</option></select></label>
+<button id="previous" class="secondary">← Previous</button><button id="next" class="secondary">Next →</button>
+<label>View <select id="view"><option value="week">Week</option><option value="month">Month</option></select></label>
+<strong id="period"></strong></div><div class="gridwrap"><table id="timeline"></table></div>
+<p class="hint">Red cells indicate more than one assignment on the same working day. Click a task to open its Trello card.</p></section>
+</main><script src="/resource-planner.js"></script></body></html>
