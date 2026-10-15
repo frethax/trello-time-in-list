@@ -8,7 +8,7 @@ Board admins plan directly inside a card. Select a board member, then click indi
 
 The calendar appears in the card's **Kanbrain** section immediately below the main task/subtask controls once the Trello account is connected and the server confirms board admin access. The card panel shows an access message if that check is denied and a configuration or request error if loading fails. Connecting Trello from the card's existing prompt retries the calendar without requiring a page reload.
 
-The board **Resource Planner** shows selected days by member in weekly or monthly views. Shared selected days for the same member are highlighted as conflicts. Click an allocation to open its Trello card. Archived cards can be shown with the **Show archived cards** option. Use **Resources** in the planner, or the **Resource Planner** section in Kanbrain Settings, to choose any subset of board members. The choice is saved per board in the current admin's member-private Power-Up storage and does not hide or delete assignments for other admins.
+The board **Resource Planner** shows selected days by member in weekly or monthly views. Shared selected days for the same member are highlighted as conflicts. Click an allocation to open its Trello card. Archived cards can be shown with the **Show archived cards** option. The **Filter resources** control above the timeline lets admins search members and select several at once; **Select all** and **Clear** are available in the same menu. The same choice can be managed in the **Resource Planner** section of Kanbrain Settings. It is saved per board in the current admin's member-private Power-Up storage and does not hide or delete assignments for other admins.
 
 ### Access and storage
 
