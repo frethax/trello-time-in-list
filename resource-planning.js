@@ -28,8 +28,17 @@
     return count;
   }
   function overlapDays(a, b) {
-    return weekdays(a.startDate > b.startDate ? a.startDate : b.startDate,
-      a.endDate < b.endDate ? a.endDate : b.endDate);
+    var bDays = new Set(b.dates || []);
+    return (a.dates || []).filter(function(day) { return bDays.has(day); }).length;
+  }
+  function normalizeDates(values) {
+    if (!Array.isArray(values) || !values.length || values.length > 366) return null;
+    var days = Array.from(new Set(values));
+    if (days.length !== values.length || days.some(function(day) {
+      var d = date(day);
+      return !d || d.getUTCDay() === 0 || d.getUTCDay() === 6;
+    })) return null;
+    return days.sort();
   }
   function conflicts(assignments) {
     var result = {};
@@ -54,5 +63,5 @@
     return { start: monday, end: add(monday, 6) };
   }
   return { date: date, add: add, weekdays: weekdays, overlapDays: overlapDays,
-    conflicts: conflicts, bounds: bounds };
+    normalizeDates: normalizeDates, conflicts: conflicts, bounds: bounds };
 });

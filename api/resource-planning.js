@@ -1,4 +1,3 @@
-const { randomUUID } = require('node:crypto');
 const planning = require('../resource-planning');
 
 const ID = /^[0-9a-f]{24}$/i;
@@ -37,9 +36,12 @@ function key(boardId) { return 'kanbrain:planning:v1:' + boardId; }
 function parseHash(values) {
   const result = [];
   for (let i = 1; i < (values || []).length; i += 2) {
-    try { result.push(JSON.parse(values[i])); } catch (_) { /* damaged entry */ }
+    try {
+      const assignment = JSON.parse(values[i]);
+      if (planning.normalizeDates(assignment.dates)) result.push(assignment);
+    } catch (_) { /* damaged entry */ }
   }
-  return result.sort((a, b) => a.startDate.localeCompare(b.startDate));
+  return result.sort((a, b) => a.dates[0].localeCompare(b.dates[0]));
 }
 function send(res, status, data) { res.status(status).json(data); }
 
@@ -82,7 +84,10 @@ async function handler(req, res) {
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     if (req.method === 'DELETE' || req.method === 'PUT') {
-      if (typeof body.id !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.id)) throw error(400, 'Invalid assignment');
+      if (typeof body.id !== 'string' ||
+          !/^(?:[0-9a-f]{24}:[0-9a-f]{24}|[0-9a-f-]{36})$/i.test(body.id)) {
+        throw error(400, 'Invalid assignment');
+      }
       const stored = await redis(['HGET', key(boardId), body.id]);
       if (!stored) throw error(404, 'Assignment not found');
       var previous = JSON.parse(stored);
@@ -92,22 +97,34 @@ async function handler(req, res) {
       }
     }
     const cardId = req.method === 'PUT' ? previous.cardId : body.cardId;
+    const memberId = req.method === 'PUT' ? previous.memberId : body.memberId;
+    const dates = planning.normalizeDates(body.dates);
     if (typeof cardId !== 'string' || !ID.test(cardId) ||
-        typeof body.memberId !== 'string' || !ID.test(body.memberId) ||
-        !planning.date(body.startDate) || !planning.date(body.endDate) ||
-        body.startDate > body.endDate || !planning.weekdays(body.startDate, body.endDate)) {
-      throw error(400, 'Choose a board member and a date range containing a weekday');
+        typeof memberId !== 'string' || !ID.test(memberId) || !dates ||
+        (req.method === 'PUT' && body.memberId && body.memberId !== memberId)) {
+      throw error(400, 'Choose a board member and one or more weekdays');
     }
     const [card, members] = await Promise.all([
       trello('/cards/' + cardId + '?fields=idBoard,name,shortUrl,closed', token),
       trello('/boards/' + boardId + '/members?fields=id', token)
     ]);
     if (card.idBoard !== boardId || card.closed) throw error(400, 'Card is not open on this board');
-    if (!members.some(m => m.id === body.memberId)) throw error(400, 'Member is not on this board');
-    const assignment = { id: req.method === 'PUT' ? previous.id : randomUUID(),
+    if (!members.some(m => m.id === memberId)) throw error(400, 'Member is not on this board');
+    if (req.method === 'POST') {
+      const existing = parseHash(await redis(['HGETALL', key(boardId)]));
+      if (existing.some(a => a.cardId === cardId && a.memberId === memberId)) {
+        throw error(409, 'This member already has a plan on this card; edit it instead');
+      }
+    }
+    const assignment = { id: req.method === 'PUT' ? previous.id : cardId + ':' + memberId,
       cardId, cardName: card.name, cardUrl: card.shortUrl,
-      memberId: body.memberId, startDate: body.startDate, endDate: body.endDate };
-    await redis(['HSET', key(boardId), assignment.id, JSON.stringify(assignment)]);
+      memberId, dates };
+    if (req.method === 'POST') {
+      const inserted = await redis(['HSETNX', key(boardId), assignment.id, JSON.stringify(assignment)]);
+      if (!inserted) throw error(409, 'This member already has a plan on this card; edit it instead');
+    } else {
+      await redis(['HSET', key(boardId), assignment.id, JSON.stringify(assignment)]);
+    }
     return send(res, req.method === 'POST' ? 201 : 200, { assignment });
   } catch (e) {
     // Never return tokens, Trello URLs or storage credentials in errors.

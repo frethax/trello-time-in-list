@@ -155,14 +155,23 @@
   <div id="kb-wrap"><div class="kb-subbar" id="kb-subbar"></div><div id="root"><div class="empty">⏳ Loading...</div></div>
     <section id="kb-resource" class="kb-plan-panel" hidden aria-label="Resource Planning">
       <div class="kb-plan-heading">Resource Planning</div>
-      <p class="kb-plan-note">Board admins only. Full weekdays, Monday to Friday.</p>
+      <p class="kb-plan-note">Choose individual workdays for each member. Gaps stay unassigned.</p>
       <div id="kb-plan-list" class="kb-plan-list"></div>
       <form id="kb-plan-form" class="kb-plan-form">
         <label>Member<select id="kb-plan-member" required></select></label>
-        <label>Start date<input id="kb-plan-start" type="date" required></label>
-        <label>End date<input id="kb-plan-end" type="date" required></label>
-        <button id="kb-plan-submit" class="primary" type="submit">Add assignment</button>
-        <button id="kb-plan-cancel" type="button" hidden>Cancel</button>
+        <div class="kb-calendar" aria-label="Select workdays">
+          <div class="kb-calendar-nav">
+            <button id="kb-calendar-prev" type="button" aria-label="Previous month">‹</button>
+            <strong id="kb-calendar-month"></strong>
+            <button id="kb-calendar-next" type="button" aria-label="Next month">›</button>
+          </div>
+          <div id="kb-calendar-grid" class="kb-calendar-grid"></div>
+        </div>
+        <div id="kb-selected-days" class="kb-selected-days" aria-live="polite">No days selected.</div>
+        <div class="kb-plan-form-actions">
+          <button id="kb-plan-submit" class="primary" type="submit">Save selected days</button>
+          <button id="kb-plan-cancel" type="button" hidden>Cancel</button>
+        </div>
       </form>
       <div id="kb-plan-status" class="kb-plan-status" role="status" aria-live="polite"></div>
     </section>

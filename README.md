@@ -4,7 +4,7 @@ Kanbrain is a Trello Power-Up for Time in List, card numbering, subtasks, and re
 
 ## Resource Planning MVP
 
-Board admins can add, edit, and delete multiple member assignments with inclusive start and end dates on each card. **Resource Planner** on the board opens a weekly or monthly timeline, filters by member, highlights assignments that overlap on at least one weekday, and links each assignment to its Trello card. One assignment represents full days. Working days are Monday through Friday; Saturdays and Sundays never count, and public holidays still count. This calculation does not read or change the Time in List `workdays` setting.
+Board admins plan directly inside each card: choose a board member, then click individual dates in the calendar. Dates may have gaps and may span multiple months. Each card has one editable set of selected days per member; admins can remove the entire plan. **Resource Planner** on the board opens a weekly or monthly timeline, filters by member, highlights plans for the same member that share a selected date, and links each plan to its Trello card. Each selected date represents one full day. Only Monday through Friday can be selected; Saturdays and Sundays are disabled, and public holidays can be selected. This calculation does not read or change the Time in List `workdays` setting.
 
 The card section appears only after the server confirms board admin access. The board button also uses Trello's admin condition. Planner data is kept in server-side Redis rather than Trello board-shared Power-Up storage. Every API request checks the caller's current Trello board membership; hiding the button is not the security boundary. Existing Time in List and other Power-Up data stay in their original storage.
 
@@ -28,4 +28,4 @@ The existing Power-Up authentication uses a Trello read token. The API accepts i
 node --test
 ```
 
-The tests cover inclusive weekday counts, weekends and holidays, date bounds, overlap behavior, admin access checks, role changes, and assignment CRUD.
+The tests cover date selection and gaps, weekends and holidays, date bounds, exact-day overlaps, admin access checks, role changes, and assignment CRUD.
