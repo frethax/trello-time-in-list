@@ -117,7 +117,6 @@
   }
 
   var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'Kanbrain' });
-  kbResourceCard(t);
 
   // ---- Main task / subtask bar (works even if card-buttons is hidden) ----
   function renderSubbar() {
@@ -156,6 +155,7 @@
 
   t.render(function() {
     renderSubbar();
+    kbResourceCard(t);
     return t.get('board', 'shared', 'language')
       .then(function(lang) {
         var L = STRINGS[lang] || STRINGS['en'];
@@ -187,7 +187,13 @@
     btn.innerText = L.connectBtn;
     btn.addEventListener('click', function() {
       t.getRestApi().authorize({ scope: 'read', expiration: 'never' })
-        .then(function() { t.render(function() {}); });
+        .then(function() {
+          kbResourceCard(t);
+          return t.getRestApi().getToken().then(function(token) {
+            if (token) return loadCard(token, L);
+            showAuth(L);
+          });
+        });
     });
     wrap.appendChild(msg);
     wrap.appendChild(btn);
