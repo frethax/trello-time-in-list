@@ -1,0 +1,11 @@
+{
+  "name": "kanbrain-power-up",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.2"
+  }
+}

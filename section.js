@@ -117,6 +117,7 @@
   }
 
   var t = TrelloPowerUp.iframe({ appKey: API_KEY, appName: 'Kanbrain' });
+  kbResourceCard(t);
 
   // ---- Main task / subtask bar (works even if card-buttons is hidden) ----
   function renderSubbar() {

@@ -1,35 +1,64 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kanbrain Resource Planning</title>
-<script src="https://p.trellocdn.com/power-up.min.js"></script>
-<style>
-:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172b4d;background:#fff}
-body{margin:0;padding:22px}h1{font-size:20px;margin:0 0 8px}.hint{color:#626f86;font-size:12px;margin:0 0 20px}
-.row{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:12px 0}.row>*{flex:1}label{display:block;font-size:12px;font-weight:600;margin-bottom:5px}
-input,select,button{font:inherit;border:1px solid #dfe1e6;border-radius:6px;padding:9px;box-sizing:border-box;min-height:36px}
-button{background:#0052cc;color:#fff;border:0;cursor:pointer;flex:0 0 auto}button.secondary{background:#e9edf5;color:#172b4d}
-button.danger{background:#ffebe6;color:#ae2a19}button:disabled{opacity:.5;cursor:not-allowed}
-table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px solid #e5e9f1;padding:9px;text-align:left}
-th{color:#626f86;background:#f7f8fa;position:sticky;top:0}a{color:#0052cc;text-decoration:none}
-.error{color:#ae2a19}.success{color:#216e4e}.muted{color:#626f86}
-.gridwrap{overflow:auto;max-height:470px;border:1px solid #e5e9f1;border-radius:8px}
-.day{text-align:center;min-width:46px!important}.weekend{background:#f2f3f6;color:#97a0af}
-.cell{background:#e7f3ff;border-radius:3px;color:#0747a6;font-weight:600;cursor:pointer}
-.overlap{background:#ffebe6;color:#ae2a19}.archived-flag{font-size:10px;color:#626f86;background:#edf0f5;padding:2px 5px;border-radius:4px;margin-left:7px}.archived-toggle{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.archived-toggle input{min-height:0}.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
-#message{min-height:18px;font-size:12px;margin:8px 0}.allocation{display:inline-block;background:#e7f3ff;padding:3px 6px;border-radius:4px;margin:2px}
-</style></head><body>
-<h1 id="heading">Resource Planning</h1><p class="hint">Planned dates only. Monday–Friday are counted; weekends are excluded. Public holidays are not excluded.</p>
-<div id="message">Checking board administrator access…</div><main id="app" hidden>
-<section id="editor" hidden><h2 id="cardTitle">Task allocation</h2><form id="allocationForm">
-<div class="row"><div><label for="member">Board member</label><select id="member" required></select></div>
-<div><label for="start">Start date</label><input type="date" id="start" required></div>
-<div><label for="end">End date</label><input type="date" id="end" required></div>
-<button type="submit" id="save">Add assignment</button><button type="button" id="cancel" class="secondary" hidden>Cancel</button></div></form>
-<div class="gridwrap"><table><thead><tr><th>Member</th><th>Start</th><th>End</th><th>Working days</th><th>Actions</th></tr></thead><tbody id="allocations"></tbody></table></div></section>
-<section id="board" hidden><div class="toolbar"><label>Member <select id="filter"><option value="">All members</option></select></label>
-<button id="previous" class="secondary">← Previous</button><button id="next" class="secondary">Next →</button>
-<label>View <select id="view"><option value="week">Week</option><option value="month">Month</option></select></label>
-<label class="archived-toggle"><input type="checkbox" id="showArchived"> Show Archived Tasks</label>
-<strong id="period"></strong></div><div class="gridwrap"><table id="timeline"></table></div>
-<p class="hint">Red cells indicate more than one assignment on the same working day. Click a task to open its Trello card.</p></section>
-</main><script src="/resource-planner.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  <link rel="stylesheet" href="/resource-planning.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 20px; background: #f4f5f7; color: #172b4d; font: 13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    h1 { margin: 0 0 4px; font-size: 20px; }
+    .intro { margin: 0 0 18px; color: #5e6c84; }
+    .kb-plan-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .kb-plan-toolbar select { min-height: 30px; border: 1px solid #c1c7d0; border-radius: 5px; background: #fff; padding: 4px 8px; color: #172b4d; }
+    .kb-plan-toolbar button[aria-pressed="true"] { background: #e8f0ff; color: #0052cc; border-color: #0052cc; }
+    #period-label { min-width: 160px; text-align: center; font-weight: 700; }
+    .spacer { flex: 1; }
+    #planner-status { min-height: 18px; margin-bottom: 8px; color: #5e6c84; }
+    #planner-status.error { color: #bf2600; }
+    .timeline-scroll { overflow: auto; max-height: calc(100vh - 170px); background: #fff; border: 1px solid #dfe1e6; border-radius: 8px; }
+    .timeline-head, .timeline-row { display: flex; min-width: max-content; }
+    .timeline-head { position: sticky; top: 0; z-index: 3; background: #f4f5f7; border-bottom: 1px solid #dfe1e6; }
+    .member-head, .member-name { position: sticky; left: 0; z-index: 2; width: 165px; min-width: 165px; padding: 9px 10px; background: #fff; border-right: 1px solid #dfe1e6; font-weight: 600; }
+    .member-head { background: #f4f5f7; z-index: 4; }
+    .day-heads { display: grid; }
+    .day-head { padding: 8px 0; border-right: 1px solid #dfe1e6; text-align: center; font-size: 11px; color: #5e6c84; }
+    .day-head.weekend, .day-shade.weekend { background: #f4f5f7; }
+    .timeline-row { border-bottom: 1px solid #dfe1e6; }
+    .timeline-row:last-child { border-bottom: 0; }
+    .member-name { display: flex; align-items: center; overflow: hidden; text-overflow: ellipsis; }
+    .days-grid { display: grid; position: relative; min-height: 38px; padding: 3px 0; }
+    .day-shade { border-right: 1px solid #ebecf0; grid-row: 1 / -1; z-index: 0; }
+    .assignment { align-self: center; z-index: 1; display: block; margin: 2px 2px; padding: 5px 7px; border-radius: 4px; background: #e8f0ff; color: #0747a6; border: 1px solid #b3d4ff; font-size: 11px; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .assignment:hover, .assignment:focus-visible { background: #deebff; outline: 2px solid #0052cc; outline-offset: -2px; }
+    .assignment.conflict { background: #fff0ed; color: #bf2600; border-color: #ffbdad; }
+    .legend { display: flex; gap: 14px; margin-top: 10px; color: #5e6c84; font-size: 11px; }
+    .legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .swatch { width: 12px; height: 12px; border: 1px solid #b3d4ff; background: #e8f0ff; border-radius: 2px; }
+    .swatch.conflict { border-color: #ffbdad; background: #fff0ed; }
+  </style>
+</head>
+<body>
+  <h1>Resource Planner</h1>
+  <p class="intro">Board assignments by member. Dates include full weekdays only; holidays are included.</p>
+  <div class="kb-plan-toolbar">
+    <button id="prev" type="button" aria-label="Previous period">‹</button>
+    <span id="period-label"></span>
+    <button id="next" type="button" aria-label="Next period">›</button>
+    <button id="week" type="button">Week</button>
+    <button id="month" type="button">Month</button>
+    <span class="spacer"></span>
+    <label for="member-filter">Member</label>
+    <select id="member-filter"><option value="">All members</option></select>
+    <label><input id="show-archived" type="checkbox"> Show archived cards</label>
+    <button id="refresh" type="button">Refresh</button>
+  </div>
+  <div id="planner-status" role="status" aria-live="polite">Loading…</div>
+  <div class="timeline-scroll"><div id="timeline"></div></div>
+  <div class="legend"><span><i class="swatch"></i> Assignment</span><span><i class="swatch conflict"></i> Overlapping workdays</span></div>
+  <script src="/resource-planning.js"></script>
+  <script src="/resource-planning-ui.js"></script>
+  <script src="/resource-planner.js"></script>
+</body>
+</html>

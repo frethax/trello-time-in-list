@@ -2,24 +2,32 @@
 
 Trello Power-Up for time in list, card numbering, subtasks, and resource planning.
 
-## Resource Planning (October 2026 MVP)
+## Resource Planning
 
-Board administrators can use **Resource Allocation** on a card to choose a board member and an inclusive start/end date. The **Resource Planner** board button displays assignments by member in weekly or monthly timelines. Assignments can overlap; overlapping working days are highlighted. Clicking a task opens the Trello card.
+Board admins plan directly inside a card. Select a board member, then click individual dates in the calendar; dates can have gaps and span months. Each card has one editable plan per member. Saturdays and Sundays cannot be selected; public holidays can. Every selected date is one full working day. Planning does not read or change the Time in List `workdays` setting.
 
-**Working days:** Monday through Friday, inclusive of start and end when those dates are weekdays. Saturday and Sunday are *never* counted, regardless of the existing optional Time-in-List weekend setting. Public holidays are not accounted for. Each working day represents one allocated day; there is no hourly/capacity percentage data.
+The board **Resource Planner** shows selected days by member in weekly or monthly views. Shared selected days for the same member are highlighted as conflicts. Click an allocation to open its Trello card. Archived cards can be shown with the **Show archived cards** option.
 
-**Storage:** The source of truth is the `kbResourceAllocations` key in card-**private** Power-Up storage for the currently signed-in Trello member. There is no new server/database. Each admin has an independent planner and cannot see another admin's allocations. The board view reads active and archived cards, which may be slow on very large boards. Existing shared allocations are copied into the current member's private storage and then removed from shared storage when that card is loaded by an admin. Loading Resource Planner includes archived cards, allowing their existing shared allocations to be migrated and removed as well.
+### Access and storage
 
-**Access model:** The UI is shown only to board administrators, and the modal checks board admin membership with Trello REST. Trello private Power-Up storage is visible only to the member who stored it, not to other board members (including other admins). This is a single-user planner, not shared team scheduling. Existing shared records remain exposed until they are migrated and removed; Trello board members may already have read them before migration. This change cannot retroactively revoke prior access.
+Plan data is stored in a **private Vercel Blob store**, in one JSON document per board. Preview and Production use separate paths. The server uses conditional writes to retry concurrent changes. The `/api/resource-planning` function verifies the caller's *current* Trello board admin membership on every read and write, including direct API requests. It checks that a selected member belongs to the board and that new or edited plans refer to an open card on that board. Plan data is not stored in board-shared Power-Up storage. Trello tokens are used for each request but are not persisted by Kanbrain. Responses disable caching.
 
-**Archived tasks:** The Resource Planner uses Trello's all-cards REST endpoint to load both active and archived cards. The **Show Archived Tasks** checkbox is off by default; turn it on to see archived tasks labeled **Archived** alongside active tasks. Resource allocation records stay in member-private storage. The archived filter never deletes allocation data.\n\n## Manual smoke test
+The previous Resource Planner stored date ranges in each admin's **member-private** Trello Power-Up storage. Its card and board views remain available as **Previous Allocations** and **My Previous Planner** so those records are not lost. They are separate from the new shared admin planner; there is no automatic transfer of private plans into shared storage. Admins can still use those views until they choose to recreate their dates in the card calendar. Removing an admin blocks new API access but cannot revoke any data that person already viewed or saved in their own private storage.
 
-1. Authorize the Power-Up with Trello read access as a board admin.
-2. Open a card, select **Resource Allocation**, select a member and Friday–Tuesday; confirm the duration is 3 days.
-3. Add a second allocation overlapping the first; verify the **Resource Planner** highlights the overlapping weekday cells.
-4. Edit and delete assignments; reload and verify persistence.
-5. Archive a card with an allocation: confirm it is hidden by default and reappears with an Archived label when Show Archived Tasks is enabled. Verify working days and previous assignments remain unchanged.\n6. Use weekly/monthly navigation, member filter, and click an active task to open its Trello card.
-6. Verify non-admin board members cannot open the admin Resource Planning UI. (Remember the storage limitation above.)
-7. Log in as another board admin and confirm they cannot see the first admin's private allocations.\n8. Verify pre-existing shared allocations are migrated, and shared keys are removed on each visited open card.\n9. Check existing number badges, time badges, Main Task and Add Subtask controls are unaffected.
+### Deployment
 
-Live Trello and deployment checks are still required after merging.
+The repository is configured for Vercel. A **private** Vercel Blob store named `kanbrain-resource-plans` is connected to the `trello-time-in-list` project for Preview and Production. Vercel supplies `BLOB_READ_WRITE_TOKEN` to Functions; newer OIDC connections can use `BLOB_STORE_ID` instead. Set this **server-only** environment variable for both Preview and Production:
+
+| Variable | Value |
+| --- | --- |
+| `TRELLO_API_KEY` | The Trello Power-Up API key used by `connector.js` |
+
+Redeploy after connecting the store: Vercel deployments receive environment variables at build/deployment time. Deploy the static files and `/api/resource-planning` function together. Do not put Blob credentials in client code or Trello Power-Up storage. If the store is disconnected, the new planner API returns `503`; the existing Power-Up features and previous private planner continue to work. A ready Preview deployment does not make the feature appear in Trello: `connector.js` points to the production domain, so the production deployment must include this change.
+
+### Tests
+
+```sh
+node --test
+```
+
+Tests cover individual date selection, weekends and holidays, exact-day overlaps, admin access, role changes, archived cards, and plan CRUD. Live Trello and Redis integration must also be checked after deployment.

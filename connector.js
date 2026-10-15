@@ -105,8 +105,8 @@ TrelloPowerUp.initialize({
   'card-buttons': function(t, options) {
     return Promise.all([t.card('id'), t.get('board', 'shared', 'subtasks')]).then(function(r) {
       var icon = 'https://trello-time-in-list.vercel.app/icon.svg';
-      var buttons = [{ icon: icon, text: 'Resource Allocation', condition: 'admin', callback: function(t2) {
-        return t2.modal({ url: t2.signUrl('https://trello-time-in-list.vercel.app/resource-planner.html?mode=card&cardId=' + encodeURIComponent(r[0].id)), height: 650, title: 'Task Resource Allocation' });
+      var buttons = [{ icon: icon, text: 'Previous Allocations', condition: 'admin', callback: function(t2) {
+        return t2.modal({ url: t2.signUrl('https://trello-time-in-list.vercel.app/legacy-resource-planner.html?mode=card&cardId=' + encodeURIComponent(r[0].id)), height: 650, title: 'Previous Allocations' });
       }}];
       if (kbNormalizeSubtasks(r[1]).enabled) buttons = buttons.concat([
         { icon: icon, text: 'Main Task', condition: 'edit', callback: kbOpenParentPicker },
@@ -118,10 +118,10 @@ TrelloPowerUp.initialize({
 
   'board-buttons': function(t, options) {
     return [{
-      text: 'Resource Planner',
+      text: 'My Previous Planner',
       icon: { light: 'https://trello-time-in-list.vercel.app/icon.svg', dark: 'https://trello-time-in-list.vercel.app/icon-white.svg' },
       condition: 'admin',
-      callback: function(t) { return t.modal({url:t.signUrl('https://trello-time-in-list.vercel.app/resource-planner.html?mode=board'), height:750, fullscreen:true, title:'Kanbrain Resource Planner'}); }
+      callback: function(t) { return t.modal({url:t.signUrl('https://trello-time-in-list.vercel.app/legacy-resource-planner.html?mode=board'), height:750, fullscreen:true, title:'My Previous Planner'}); }
     }, {
       text: 'Kanbrain',
       icon: {
@@ -136,6 +136,20 @@ TrelloPowerUp.initialize({
           height: 720,
           fullscreen: false,
           title: 'Kanbrain Settings'
+        });
+      }
+    }, {
+      text: 'Resource Planner',
+      icon: {
+        light: 'https://trello-time-in-list.vercel.app/icon.svg',
+        dark: 'https://trello-time-in-list.vercel.app/icon-white.svg'
+      },
+      condition: 'admin',
+      callback: function(t) {
+        return t.modal({
+          url: t.signUrl('https://trello-time-in-list.vercel.app/resource-planner.html'),
+          accentColor: '#0052cc', height: 720, fullscreen: true,
+          title: 'Resource Planner'
         });
       }
     }];
