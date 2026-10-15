@@ -73,14 +73,21 @@ function renderBoard(){
  var thead=document.createElement('thead');thead.appendChild(head);tbl.appendChild(thead);
  var tbody=document.createElement('tbody');tbl.appendChild(tbody);
  var chosen=$('filter').value;var grouped={};
- assignments.filter(function(a){return !chosen||a.memberId===chosen;}).forEach(function(a){
+ var includeArchived=$('showArchived').checked;
+ assignments.filter(function(a){
+   if(chosen&&a.memberId!==chosen)return false;
+   var card=cards.find(function(c){return c.id===a.cardId;});
+   return includeArchived || (card && !card.closed);
+ }).forEach(function(a){
  (grouped[a.memberId]||(grouped[a.memberId]=[])).push(a);
  });
  Object.keys(grouped).sort(function(a,b){return memberName(a).localeCompare(memberName(b));}).forEach(function(id){
  var rows=grouped[id],heading=document.createElement('tr');var header=cell(heading,memberName(id)+' · '+rows.length+' assignment(s)');header.colSpan=days.length+1;header.style.fontWeight='bold';header.style.background='#f1f3f6';tbody.appendChild(heading);
  rows.forEach(function(a){var tr=document.createElement('tr'),c=cards.find(function(c){return c.id===a.cardId;});
  var link=document.createElement('a');link.href='#';link.textContent=c?c.name:a.cardId;link.onclick=function(e){e.preventDefault();t.showCard(a.cardId);};
- var first=cell(tr,'');first.appendChild(link);days.forEach(function(day){var td=cell(tr,'');if(localDate(day).getDay()===0||localDate(day).getDay()===6){td.className='weekend';return;}
+ var first=cell(tr,'');first.appendChild(link);
+ if(c&&c.closed){var flag=document.createElement('span');flag.className='archived-flag';flag.textContent=' Archived';first.appendChild(flag);}
+ days.forEach(function(day){var td=cell(tr,'');if(localDate(day).getDay()===0||localDate(day).getDay()===6){td.className='weekend';return;}
  if(day>=a.start&&day<=a.end){td.textContent='●';td.className='day cell';td.title=(c?c.name:a.cardId)+' ('+a.start+' – '+a.end+')';td.onclick=function(){t.showCard(a.cardId);};
  var overlaps=rows.filter(function(x){return day>=x.start&&day<=x.end;}).length;if(overlaps>1){td.className+=' overlap';td.title+=' · Overlapping allocations: '+overlaps;}}
  });tbody.appendChild(tr);});
@@ -88,10 +95,11 @@ function renderBoard(){
  if(!Object.keys(grouped).length){var tr=document.createElement('tr'),td=cell(tr,'No assignments found. Open a card and assign members.');td.colSpan=days.length+1;tbody.appendChild(tr);}
 }
 function startBoard(){$('board').hidden=false;message('Loading task allocations…');
- // Card-shared storage is authoritative. Read each board card to avoid a central size limit.
+ // Read member-private allocations across active AND archived cards so archived
+ // assignments remain in history. Visibility is controlled only by the filter.
  return Promise.all(cards.map(function(c){return getAlloc(c.id).then(function(rows){return rows.map(function(a){return Object.assign({cardId:c.id},a);});});}))
  .then(function(all){assignments=[].concat.apply([],all);renderBoard();message('');}).catch(function(e){message(e.message,true);});}
-$('filter').onchange=renderBoard;$('view').onchange=renderBoard;
+$('filter').onchange=renderBoard;$('view').onchange=renderBoard;$('showArchived').onchange=renderBoard;
 $('previous').onclick=function(){anchor=$('view').value==='month'?new Date(anchor.getFullYear(),anchor.getMonth()-1,1):plusDays(anchor,-7);renderBoard();};
 $('next').onclick=function(){anchor=$('view').value==='month'?new Date(anchor.getFullYear(),anchor.getMonth()+1,1):plusDays(anchor,7);renderBoard();};
 Promise.all([t.board('id'),t.member('id'),t.getRestApi().getToken(),t.cards('id','name','idShort')]).then(function(r){
@@ -99,7 +107,14 @@ Promise.all([t.board('id'),t.member('id'),t.getRestApi().getToken(),t.cards('id'
  return Promise.all([api('/boards/'+boardId+'/memberships'),api('/boards/'+boardId+'/members?fields=fullName,username')]).then(function(res){
  var mine=res[0].find(function(m){return m.idMember===me;});if(!mine||mine.memberType!=='admin')throw Error('Resource Planning is available to board admins only.');
  members=res[1];members.forEach(function(m){addOption($('member'),m.id,m.fullName||m.username);addOption($('filter'),m.id,m.fullName||m.username);});
- $('app').hidden=false;return mode==='card'?startCard():startBoard();
+ // Trello SDK card collections can omit archived cards. For board planning,
+ // query the authoritative all-cards endpoint after admin verification.
+ if(mode==='board'){
+   return api('/boards/'+boardId+'/cards/all?fields=name,idShort,closed').then(function(all){
+     cards=all; $('app').hidden=false;return startBoard();
+   });
+ }
+ $('app').hidden=false;return startCard();
  });
 }).catch(function(e){message(e.message,true);});
 })();
