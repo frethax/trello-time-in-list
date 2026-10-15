@@ -1,12 +1,18 @@
 # Kanbrain
 
-Kanbrain is a Trello Power-Up for Time in List, card numbering, subtasks, and resource planning.
+Trello Power-Up for time in list, card numbering, subtasks, and resource planning.
 
-## Resource Planning MVP
+## Resource Planning
 
-Board admins plan directly inside each card: choose a board member, then click individual dates in the calendar. Dates may have gaps and may span multiple months. Each card has one editable set of selected days per member; admins can remove the entire plan. **Resource Planner** on the board opens a weekly or monthly timeline, filters by member, highlights plans for the same member that share a selected date, and links each plan to its Trello card. Each selected date represents one full day. Only Monday through Friday can be selected; Saturdays and Sundays are disabled, and public holidays can be selected. This calculation does not read or change the Time in List `workdays` setting.
+Board admins plan directly inside a card. Select a board member, then click individual dates in the calendar; dates can have gaps and span months. Each card has one editable plan per member. Saturdays and Sundays cannot be selected; public holidays can. Every selected date is one full working day. Planning does not read or change the Time in List `workdays` setting.
 
-The card section appears only after the server confirms board admin access. The board button also uses Trello's admin condition. Planner data is kept in server-side Redis rather than Trello board-shared Power-Up storage. Every API request checks the caller's current Trello board membership; hiding the button is not the security boundary. Existing Time in List and other Power-Up data stay in their original storage.
+The board **Resource Planner** shows selected days by member in weekly or monthly views. Shared selected days for the same member are highlighted as conflicts. Click an allocation to open its Trello card. Archived cards can be shown with the **Show archived cards** option.
+
+### Access and storage
+
+Plan data is stored in server-side Redis. The `/api/resource-planning` function verifies the caller's *current* Trello board admin membership on every read and write, including direct API requests. It checks that a selected member belongs to the board and that new or edited plans refer to an open card on that board. Plan data is not stored in board-shared Power-Up storage. Trello tokens are used for each request but are not persisted by Kanbrain. Responses disable caching.
+
+The previous Resource Planner stored date ranges in each admin's **member-private** Trello Power-Up storage. Its card and board views remain available as **Previous Allocations** and **My Previous Planner** so those records are not lost. They are separate from the new shared admin planner; there is no automatic transfer of private plans into shared storage. Admins can still use those views until they choose to recreate their dates in the card calendar. Removing an admin blocks new API access but cannot revoke any data that person already viewed or saved in their own private storage.
 
 ### Deployment
 
@@ -18,14 +24,12 @@ The repository is configured for Vercel. Provision an Upstash Redis database wit
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token |
 
-Deploy the updated static files and `/api/resource-planning` function together. Do not put the Redis token in client code or `board/shared` storage. Until these variables are configured, the planner API returns `503` and the card's Resource Planning section stays unavailable. The existing Power-Up features continue to run.
+Deploy the static files and `/api/resource-planning` function together. Do not put the Redis token in client code or Trello Power-Up storage. Until these variables are configured, the new planner API returns `503`; the existing Power-Up features and previous private planner continue to work.
 
-The existing Power-Up authentication uses a Trello read token. The API accepts it in the `Authorization` header, checks `/members/me` and `/boards/{id}/memberships` on every request, and allows only a confirmed `admin` membership. It validates that assigned members belong to the board and that the target card is open on that board. No token is stored. API responses disable caching. As with all browser software, admins can see data they are authorized to read; removing someone as an admin blocks future API access but cannot revoke data they previously viewed.
-
-### Run tests
+### Tests
 
 ```sh
 node --test
 ```
 
-The tests cover date selection and gaps, weekends and holidays, date bounds, exact-day overlaps, admin access checks, role changes, and assignment CRUD.
+Tests cover individual date selection, weekends and holidays, exact-day overlaps, admin access, role changes, archived cards, and plan CRUD. Live Trello and Redis integration must also be checked after deployment.

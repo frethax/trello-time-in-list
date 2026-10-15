@@ -581,7 +581,7 @@ function formatDateFull(d) {
   return y + '-' + m + '-' + day;
 }
 
-function getCustomFieldRawValue(item) {
+function getCustomFieldRawValue(item, field) {
   if (!item) return '';
   if (item.value) {
     if (item.value.text !== undefined)    return item.value.text;
@@ -589,7 +589,14 @@ function getCustomFieldRawValue(item) {
     if (item.value.checked !== undefined) return item.value.checked;
     if (item.value.date !== undefined)    return item.value.date;
   }
-  if (item.idValue) return item.idValue;
+  // Resolve Trello dropdown option IDs to the visible option labels.
+  if (item.idValue) {
+    var options = field && Array.isArray(field.options) ? field.options : [];
+    var option = options.find(function(o) { return o.id === item.idValue; });
+    if (option && option.value && option.value.text !== undefined) return option.value.text;
+    // Keep ID if the option was removed or definition metadata is missing.
+    return item.idValue;
+  }
   return '';
 }
 
@@ -677,7 +684,7 @@ function buildExportRows(cards, customFields, listMap, actionsByCard) {
 
     (customFields || []).forEach(function(cf) {
       var item = (card.customFieldItems || []).find(function(ci) { return ci.idCustomField === cf.id; });
-      row[cf.name] = getCustomFieldRawValue(item);
+      row[cf.name] = getCustomFieldRawValue(item, cf);
     });
 
     rows.push(row);

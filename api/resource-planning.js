@@ -72,13 +72,21 @@ async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
-      const [stored, members] = await Promise.all([
-        redis(['HGETALL', key(boardId)]),
-        trello('/boards/' + boardId + '/members?fields=id,fullName,username', token)
-      ]);
       const cardId = req.query.cardId;
       if (cardId && (typeof cardId !== 'string' || !ID.test(cardId))) throw error(400, 'Invalid card');
-      return send(res, 200, { assignments: parseHash(stored).filter(a => !cardId || a.cardId === cardId),
+      const [stored, members, cards] = await Promise.all([
+        redis(['HGETALL', key(boardId)]),
+        trello('/boards/' + boardId + '/members?fields=id,fullName,username', token),
+        cardId ? Promise.resolve(null) : trello('/boards/' + boardId + '/cards/all?fields=id,name,shortUrl,closed', token)
+      ]);
+      const currentCards = new Map((cards || []).map(c => [c.id, c]));
+      const assignments = parseHash(stored).filter(a => !cardId || a.cardId === cardId).map(a => {
+        const card = currentCards.get(a.cardId);
+        return cardId ? a : { ...a, archived: !card || !!card.closed,
+          cardName: card ? card.name : a.cardName,
+          cardUrl: card ? card.shortUrl : a.cardUrl };
+      });
+      return send(res, 200, { assignments,
         members: members.map(m => ({ id: m.id, name: m.fullName || m.username || m.id })) });
     }
 

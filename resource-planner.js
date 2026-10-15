@@ -46,7 +46,8 @@
     var days = daysInRange(bounds.start, bounds.end);
     var width = days.length * 44;
     var visibleAssignments = assignments.filter(function(a) {
-      return a.dates.some(function(day) { return day >= bounds.start && day <= bounds.end; });
+      return (document.getElementById('show-archived').checked || !a.archived) &&
+        a.dates.some(function(day) { return day >= bounds.start && day <= bounds.end; });
     });
     var conflicts = KBPlanning.conflicts(visibleAssignments.map(function(a) {
       return { id: a.id, memberId: a.memberId,
@@ -113,7 +114,7 @@
           link.target = '_blank'; link.rel = 'noopener noreferrer';
           link.style.gridColumn = (days.indexOf(part.start) + 1) + ' / ' + (days.indexOf(part.end) + 2);
           link.style.gridRow = String(a._lane + 1);
-          link.textContent = (conflicts[a.id] ? '⚠ ' : '') + a.cardName;
+          link.textContent = (conflicts[a.id] ? '⚠ ' : '') + a.cardName + (a.archived ? ' (archived)' : '');
           link.title = a.cardName + ' · ' + a.dates.length + ' selected workdays: ' + a.dates.join(', ') +
             (conflicts[a.id] ? ' · overlaps ' + conflicts[a.id] + ' other assignment(s)' : '');
           grid.appendChild(link);
@@ -134,6 +135,7 @@
   document.getElementById('week').addEventListener('click', function() { view = 'week'; render(); });
   document.getElementById('month').addEventListener('click', function() { view = 'month'; render(); });
   document.getElementById('refresh').addEventListener('click', refresh);
+  document.getElementById('show-archived').addEventListener('change', render);
   filter.addEventListener('change', render);
   Promise.all([t.board('id'), t.getRestApi().getToken()]).then(function(values) {
     boardId = values[0].id; token = values[1];

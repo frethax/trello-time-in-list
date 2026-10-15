@@ -44,7 +44,7 @@ test('API blocks non-admin reads and writes, then supports CRUD for an admin', a
   process.env.TRELLO_API_KEY = 'test-key';
   process.env.UPSTASH_REDIS_REST_URL = 'https://redis.example.test';
   process.env.UPSTASH_REDIS_REST_TOKEN = 'test-secret';
-  let role = 'normal', redisCalls = 0, cardBoard = boardId;
+  let role = 'normal', redisCalls = 0, cardBoard = boardId, cardClosed = false;
   const rows = new Map();
   global.fetch = async (url, options) => {
     const path = String(url);
@@ -63,8 +63,11 @@ test('API blocks non-admin reads and writes, then supports CRUD for an admin', a
     } else if (path.includes('/members/me')) result = { id: adminId };
     else if (path.includes('/memberships')) result = [{ idMember: adminId, memberType: role }];
     else if (path.includes('/boards/' + boardId + '/members')) result = [{ id: memberId, fullName: 'Casey' }];
+    else if (path.includes('/boards/' + boardId + '/cards/all')) result = [{
+      id: cardId, name: 'A card', shortUrl: 'https://trello.com/c/abc123', closed: cardClosed
+    }];
     else if (path.includes('/cards/' + cardId)) result = {
-      idBoard: cardBoard, name: 'A card', shortUrl: 'https://trello.com/c/abc123', closed: false
+      idBoard: cardBoard, name: 'A card', shortUrl: 'https://trello.com/c/abc123', closed: cardClosed
     };
     else throw new Error('Unexpected URL ' + path);
     return { ok: true, json: async () => path.startsWith('https://redis.example.test') ? { result } : result };
@@ -91,6 +94,9 @@ test('API blocks non-admin reads and writes, then supports CRUD for an admin', a
     assert.deepEqual(created.data.assignment.dates, ['2026-10-19', '2026-10-20', '2026-10-23']);
     assert.equal((await request('POST', { cardId, memberId, dates: ['2026-10-26'] })).status, 409);
     assert.equal((await request('GET')).data.assignments.length, 1);
+    cardClosed = true;
+    assert.equal((await request('GET')).data.assignments[0].archived, true);
+    cardClosed = false;
     const id = created.data.assignment.id;
     assert.equal((await request('PUT', { id, memberId, dates: ['2026-10-20', '2026-10-26'] })).status, 200);
     assert.deepEqual((await request('GET')).data.assignments[0].dates, ['2026-10-20', '2026-10-26']);
