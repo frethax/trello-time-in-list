@@ -103,26 +103,18 @@ TrelloPowerUp.initialize({
   },
 
   'card-buttons': function(t, options) {
-    return Promise.all([t.card('id'), t.get('board', 'shared', 'subtasks')]).then(function(r) {
+    return t.get('board', 'shared', 'subtasks').then(function(config) {
       var icon = 'https://trello-time-in-list.vercel.app/icon.svg';
-      var buttons = [{ icon: icon, text: 'Previous Allocations', condition: 'admin', callback: function(t2) {
-        return t2.modal({ url: t2.signUrl('https://trello-time-in-list.vercel.app/legacy-resource-planner.html?mode=card&cardId=' + encodeURIComponent(r[0].id)), height: 650, title: 'Previous Allocations' });
-      }}];
-      if (kbNormalizeSubtasks(r[1]).enabled) buttons = buttons.concat([
+      if (kbNormalizeSubtasks(config).enabled) return [
         { icon: icon, text: 'Main Task', condition: 'edit', callback: kbOpenParentPicker },
         { icon: icon, text: 'Add Subtask', condition: 'edit', callback: kbOpenChildPicker }
-      ]);
-      return buttons;
+      ];
+      return [];
     });
   },
 
   'board-buttons': function(t, options) {
     return [{
-      text: 'My Previous Planner',
-      icon: { light: 'https://trello-time-in-list.vercel.app/icon.svg', dark: 'https://trello-time-in-list.vercel.app/icon-white.svg' },
-      condition: 'admin',
-      callback: function(t) { return t.modal({url:t.signUrl('https://trello-time-in-list.vercel.app/legacy-resource-planner.html?mode=board'), height:750, fullscreen:true, title:'My Previous Planner'}); }
-    }, {
       text: 'Kanbrain',
       icon: {
         light: 'https://trello-time-in-list.vercel.app/icon.svg',

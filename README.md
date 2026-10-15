@@ -14,7 +14,7 @@ The board **Resource Planner** shows selected days by member in weekly or monthl
 
 Plan data is stored in a **private Vercel Blob store**, in one JSON document per board. Preview and Production use separate paths. The server reads the latest document, checks that its Blob metadata stays unchanged during that read, then uses the metadata ETag for a conditional write. It retries concurrent changes without replacing another admin's plan. The `/api/resource-planning` function verifies the caller's *current* Trello board admin membership on every read and write, including direct API requests. It checks that a selected member belongs to the board and that new or edited plans refer to an open card on that board. Plan data is not stored in board-shared Power-Up storage. Trello tokens are used for each request but are not persisted by Kanbrain. Responses disable caching.
 
-The previous Resource Planner stored date ranges in each admin's **member-private** Trello Power-Up storage. Its card and board views remain available as **Previous Allocations** and **My Previous Planner** so those records are not lost. They are separate from the new shared admin planner; there is no automatic transfer of private plans into shared storage. Admins can still use those views until they choose to recreate their dates in the card calendar. Removing an admin blocks new API access but cannot revoke any data that person already viewed or saved in their own private storage.
+The previous Resource Planner stored date ranges in each admin's **member-private** Trello Power-Up storage. The old **My Previous Planner** and **Previous Allocations** buttons have been removed so there is one planner in the Power-Up. Existing private records are not deleted or automatically transferred into the shared admin planner; admins can recreate needed dates in the card calendar. The legacy page files remain in the repository for a future migration or recovery. Removing an admin blocks new API access but cannot revoke any data that person already viewed or saved in their own private storage.
 
 ### Deployment
 
@@ -24,7 +24,7 @@ The repository is configured for Vercel. A **private** Vercel Blob store named `
 | --- | --- |
 | `TRELLO_API_KEY` | The Trello Power-Up API key used by `connector.js` |
 
-Redeploy after connecting the store: Vercel deployments receive environment variables at build/deployment time. Deploy the static files and `/api/resource-planning` function together. Do not put Blob credentials in client code or Trello Power-Up storage. If the store is disconnected, the new planner API returns `503`; the existing Power-Up features and previous private planner continue to work. A ready Preview deployment does not make the feature appear in Trello: `connector.js` points to the production domain, so the production deployment must include this change.
+Redeploy after connecting the store: Vercel deployments receive environment variables at build/deployment time. Deploy the static files and `/api/resource-planning` function together. Do not put Blob credentials in client code or Trello Power-Up storage. If the store is disconnected, the planner API returns `503`; unrelated Power-Up features continue to work. A ready Preview deployment does not make the feature appear in Trello: `connector.js` points to the production domain, so the production deployment must include this change.
 
 ### Tests
 
