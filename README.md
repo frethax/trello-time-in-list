@@ -8,9 +8,9 @@ Board administrators can use **Resource Allocation** on a card to choose a board
 
 **Working days:** Monday through Friday, inclusive of start and end when those dates are weekdays. Saturday and Sunday are *never* counted, regardless of the existing optional Time-in-List weekend setting. Public holidays are not accounted for. Each working day represents one allocated day; there is no hourly/capacity percentage data.
 
-**Storage:** The source of truth is the `kbResourceAllocations` key in card-shared Power-Up storage. There is no new server/database. This avoids a single board-wide storage value limit, but the board view reads every card and therefore may be slow on very large boards.
+**Storage:** The source of truth is the `kbResourceAllocations` key in card-**private** Power-Up storage for the currently signed-in Trello member. There is no new server/database. Each admin has an independent planner and cannot see another admin's allocations. The board view reads each open card and may be slow on very large boards. Existing shared allocations are copied into the current member's private storage and then removed from shared storage when that card is loaded by an admin. This cleanup only covers cards that are loaded; archived cards might need separate cleanup.
 
-**Access control limitation:** Only board administrators are offered the UI and the modal checks current board admin membership using Trello REST. This is **not a confidentiality/security boundary**: Trello's shared Power-Up storage can be read by other board members or Power-Ups with access to that storage. Do not store confidential staffing data here. A server with verified admin authorization is required for confidential resource allocations.
+**Access model:** The UI is shown only to board administrators, and the modal checks board admin membership with Trello REST. Trello private Power-Up storage is visible only to the member who stored it, not to other board members (including other admins). This is a single-user planner, not shared team scheduling. Existing shared records remain exposed until they are migrated and removed; Trello board members may already have read them before migration. This change cannot retroactively revoke prior access.
 
 ## Manual smoke test
 
@@ -20,6 +20,6 @@ Board administrators can use **Resource Allocation** on a card to choose a board
 4. Edit and delete assignments; reload and verify persistence.
 5. Use weekly/monthly navigation, member filter, and click a task to open its Trello card.
 6. Verify non-admin board members cannot open the admin Resource Planning UI. (Remember the storage limitation above.)
-7. Check existing number badges, time badges, Main Task and Add Subtask controls are unaffected.
+7. Log in as another board admin and confirm they cannot see the first admin's private allocations.\n8. Verify pre-existing shared allocations are migrated, and shared keys are removed on each visited open card.\n9. Check existing number badges, time badges, Main Task and Add Subtask controls are unaffected.
 
 Live Trello and deployment checks are still required after merging.
