@@ -573,7 +573,7 @@
     });
     if (createAction && !moveActions.length) {
       var originalList = (createAction.data && createAction.data.list && createAction.data.list.name) || fallbackListName;
-      if (originalList) timeline.push({ list: originalList, date: new Date(createAction.date), duration: kbWorkMs(createAction.date, new Date(), workdaysOn) });
+      if (originalList) timeline.push({ list: originalList, date: new Date(createAction.date), duration: isDone ? 0 : kbWorkMs(createAction.date, new Date(), workdaysOn) });
     }
     if (createAction && moveActions.length) {
       var init = (createAction.data && createAction.data.list)
