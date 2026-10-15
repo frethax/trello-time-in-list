@@ -125,9 +125,14 @@ test('API blocks non-admin reads and writes, then supports CRUD for an admin', a
 
 test('private Blob store retries a concurrent board update without losing assignments', async () => {
   class BlobPreconditionFailedError extends Error {}
+  class BlobNotFoundError extends Error {}
   let document = null, etag = 0, conflictOnce = true;
   const fakeBlob = {
-    BlobPreconditionFailedError,
+    BlobPreconditionFailedError, BlobNotFoundError,
+    async head() {
+      if (!document) throw new BlobNotFoundError();
+      return { etag: String(etag) };
+    },
     async get(path, options) {
       assert.match(path, /^kanbrain\/planning\/v1\/preview\//);
       assert.equal(options.access, 'private');
@@ -152,4 +157,34 @@ test('private Blob store retries a concurrent board update without losing assign
   await blobStore.update(boardId, assignments => ({ assignments: [...assignments, { id: 'first' }] }));
   await blobStore.update(boardId, assignments => ({ assignments: [...assignments, { id: 'second' }] }));
   assert.deepEqual((await blobStore.read(boardId)).assignments.map(a => a.id), ['first', 'other', 'second']);
+});
+
+test('conditional writes use stable Blob metadata even when GET reports a different ETag', async () => {
+  class BlobPreconditionFailedError extends Error {}
+  class BlobNotFoundError extends Error {}
+  let revision = 1, headCalls = 0, written;
+  const fakeBlob = {
+    BlobPreconditionFailedError, BlobNotFoundError,
+    async head() {
+      headCalls++;
+      // A write between the first HEAD and GET must restart the read.
+      if (headCalls === 2) revision = 2;
+      return { etag: String(revision) };
+    },
+    async get() {
+      return {
+        stream: new Response(JSON.stringify({ version: 1, assignments: [{ id: `existing-${revision}` }] })).body,
+        blob: { etag: `download-${revision}` }
+      };
+    },
+    async put(path, value, options) {
+      if (options.ifMatch !== String(revision)) throw new BlobPreconditionFailedError();
+      written = JSON.parse(value);
+    }
+  };
+  await store.createStore(fakeBlob).update(boardId, assignments => ({
+    assignments: [...assignments, { id: 'new' }]
+  }));
+  assert.deepEqual(written.assignments.map(a => a.id), ['existing-2', 'new']);
+  assert.equal(headCalls, 4);
 });
