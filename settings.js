@@ -65,7 +65,12 @@ var STRINGS = {
     subOn: "On",
     numGrant: "Grant write access",
     numAuthFailed: "Authorization was cancelled or blocked. Please allow pop-ups and try again.",
-    numFailed: "{ok} cards updated, {f} failed (code {code})."
+    numFailed: "{ok} cards updated, {f} failed (code {code}).",
+    plannerFilterTitle: "Resource Planner",
+    plannerFilterHelp: "Choose which board members appear in your Resource Planner. This only changes your view.",
+    plannerSelectAll: "Select all", plannerSelectNone: "Clear",
+    plannerFilterAll: "All", plannerFilterSaved: "Resource filter saved.",
+    plannerFilterError: "Could not load or save the resource filter. Please try again."
   },
   tr: {
     langTitle:   'Dil',
@@ -128,7 +133,12 @@ var STRINGS = {
     subOn: "Açık",
     numGrant: "Yazma izni ver",
     numAuthFailed: "Yetkilendirme iptal edildi veya engellendi. Açılır pencerelere izin verip tekrar deneyin.",
-    numFailed: "{ok} kart güncellendi, {f} kart güncellenemedi (kod {code})."
+    numFailed: "{ok} kart güncellendi, {f} kart güncellenemedi (kod {code}).",
+    plannerFilterTitle: "Kaynak Planlayıcı",
+    plannerFilterHelp: "Planlayıcıda görünecek kişileri seçin. Bu seçim yalnızca sizin görünümünüzü değiştirir.",
+    plannerSelectAll: "Tümünü seç", plannerSelectNone: "Temizle",
+    plannerFilterAll: "Tümü", plannerFilterSaved: "Kaynak filtresi kaydedildi.",
+    plannerFilterError: "Kaynak filtresi yüklenemedi veya kaydedilemedi. Tekrar deneyin."
   },
   es: {
     langTitle:   'Idioma',
@@ -191,7 +201,12 @@ var STRINGS = {
     subOn: "Activo",
     numGrant: "Conceder permiso de escritura",
     numAuthFailed: "La autorización se canceló o se bloqueó. Permite las ventanas emergentes e inténtalo de nuevo.",
-    numFailed: "{ok} tarjetas actualizadas, {f} fallaron (código {code})."
+    numFailed: "{ok} tarjetas actualizadas, {f} fallaron (código {code}).",
+    plannerFilterTitle: "Planificador de recursos",
+    plannerFilterHelp: "Elige qué miembros aparecen en tu planificador. Solo cambia tu vista.",
+    plannerSelectAll: "Seleccionar todos", plannerSelectNone: "Limpiar",
+    plannerFilterAll: "Todos", plannerFilterSaved: "Filtro de recursos guardado.",
+    plannerFilterError: "No se pudo cargar o guardar el filtro de recursos. Inténtalo de nuevo."
   },
   pt: {
     langTitle:   'Idioma',
@@ -254,7 +269,12 @@ var STRINGS = {
     subOn: "Ativo",
     numGrant: "Conceder permissão de escrita",
     numAuthFailed: "A autorização foi cancelada ou bloqueada. Permita pop-ups e tente novamente.",
-    numFailed: "{ok} cartões atualizados, {f} falharam (código {code})."
+    numFailed: "{ok} cartões atualizados, {f} falharam (código {code}).",
+    plannerFilterTitle: "Planejador de recursos",
+    plannerFilterHelp: "Escolha quais membros aparecem no planejador. Isso altera apenas a sua visualização.",
+    plannerSelectAll: "Selecionar todos", plannerSelectNone: "Limpar",
+    plannerFilterAll: "Todos", plannerFilterSaved: "Filtro de recursos salvo.",
+    plannerFilterError: "Não foi possível carregar ou salvar o filtro. Tente novamente."
   }
 };
 
@@ -276,10 +296,77 @@ document.addEventListener('DOMContentLoaded', function() {
   if (csvBtn)  csvBtn.addEventListener('click', function() { runExport('csv'); });
   if (xlsxBtn) xlsxBtn.addEventListener('click', function() { runExport('xlsx'); });
   bindNumberingControls();
+  document.getElementById('planner-select-all').addEventListener('click', function() {
+    if (!plannerVisibilityLoaded) return;
+    plannerVisibleMemberIds = null; renderPlannerVisibility(); savePlannerVisibility();
+  });
+  document.getElementById('planner-select-none').addEventListener('click', function() {
+    if (!plannerVisibilityLoaded) return;
+    plannerVisibleMemberIds = new Set(); renderPlannerVisibility(); savePlannerVisibility();
+  });
 });
 
 var currentLang = 'en', boardLists = [], listSettings = {};
 var currentToken = null, currentBoardId = null, isExporting = false;
+var plannerMembers = [], plannerVisibleMemberIds = null, plannerVisibilityLoaded = false;
+var plannerSaveChain = Promise.resolve();
+
+function renderPlannerVisibility() {
+  if (!plannerVisibilityLoaded) return;
+  var list = document.getElementById('planner-resource-list');
+  if (!list) return;
+  list.replaceChildren();
+  plannerMembers.forEach(function(member) {
+    var label = document.createElement('label');
+    var checkbox = document.createElement('input'); checkbox.type = 'checkbox';
+    checkbox.checked = plannerVisibleMemberIds === null || plannerVisibleMemberIds.has(member.id);
+    checkbox.addEventListener('change', function() {
+      if (plannerVisibleMemberIds === null) {
+        plannerVisibleMemberIds = new Set(plannerMembers.map(function(m) { return m.id; }));
+      }
+      if (checkbox.checked) plannerVisibleMemberIds.add(member.id);
+      else plannerVisibleMemberIds.delete(member.id);
+      if (plannerVisibleMemberIds.size === plannerMembers.length) plannerVisibleMemberIds = null;
+      renderPlannerVisibility(); savePlannerVisibility();
+    });
+    var name = document.createElement('span'); name.textContent = member.name;
+    label.append(checkbox, name); list.appendChild(label);
+  });
+  var count = plannerVisibleMemberIds === null ? plannerMembers.length :
+    plannerMembers.filter(function(m) { return plannerVisibleMemberIds.has(m.id); }).length;
+  document.getElementById('planner-filter-meta').textContent = plannerVisibleMemberIds === null ?
+    STRINGS[currentLang].plannerFilterAll : count + ' / ' + plannerMembers.length;
+}
+
+function savePlannerVisibility() {
+  var boardId = currentBoardId;
+  var value = KBPlanning.visibleMembersValue(plannerVisibleMemberIds);
+  var status = document.getElementById('planner-resource-status');
+  plannerSaveChain = plannerSaveChain.catch(function() {}).then(function() {
+    return t.set('member', 'private', KBPlanning.visibilityKey(boardId), value);
+  });
+  plannerSaveChain.then(function() {
+    status.textContent = STRINGS[currentLang].plannerFilterSaved;
+  }, function() {
+    status.textContent = STRINGS[currentLang].plannerFilterError;
+  });
+}
+
+function loadPlannerVisibility(boardId, token) {
+  return Promise.all([
+    kbPlanningRequest(token, boardId, 'GET'),
+    t.get('member', 'private', KBPlanning.visibilityKey(boardId)).catch(function() { return null; })
+  ]).then(function(results) {
+    if (boardId !== currentBoardId) return;
+    plannerMembers = results[0].members;
+    var ids = KBPlanning.normalizeVisibleMembers(results[1]);
+    plannerVisibleMemberIds = ids === null ? null : new Set(ids);
+    plannerVisibilityLoaded = true;
+    renderPlannerVisibility();
+  }).catch(function() {
+    document.getElementById('planner-resource-list').textContent = STRINGS[currentLang].plannerFilterError;
+  });
+}
 
 window.setLang = function(lang) {
   currentLang = lang;
@@ -312,6 +399,11 @@ function applyStrings() {
   var contactLabel   = document.getElementById('contact-label');
   if (contactTitleEl) contactTitleEl.innerText = s.contactTitle;
   if (contactLabel)   contactLabel.innerText   = s.contactBtn;
+  setText('planner-filter-title', s.plannerFilterTitle);
+  setText('planner-filter-help', s.plannerFilterHelp);
+  setText('planner-select-all', s.plannerSelectAll);
+  setText('planner-select-none', s.plannerSelectNone);
+  if (typeof renderPlannerVisibility === 'function') renderPlannerVisibility();
   applyNumberingStrings();
   updateAccordionMeta();
   if (typeof renderSubtasks === 'function' && typeof subtasksCfg !== 'undefined') renderSubtasks();
@@ -432,11 +524,12 @@ function showConnectGate() {
   btn.innerText = s.connectBtn;
   btn.addEventListener('click', function() {
     t.getRestApi().authorize({ scope: 'read', expiration: 'never' }).then(function() {
-      t.render(function() {});
+      window.location.reload();
     });
   });
   container.appendChild(msg);
   container.appendChild(btn);
+  document.getElementById('planner-resource-list').textContent = s.connectMsg;
   setExportButtonsDisabled(true);
 }
 
@@ -487,6 +580,7 @@ t.render(function() {
       listSettings  = results[1] || {};
       var savedLang = results[2] || 'en';
       currentLang   = savedLang;
+      loadPlannerVisibility(boardId, token);
       LANGS.forEach(function(l) {
         var btn = document.getElementById('lang-' + l.code);
         if (btn) btn.className = 'lang-btn' + (l.code === savedLang ? ' active' : '');

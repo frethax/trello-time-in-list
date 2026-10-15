@@ -35,6 +35,16 @@ test('week and month bounds and exact selected-day conflicts', () => {
   assert.equal(planning.normalizeDates(['2026-10-19', '2026-10-19']), null);
 });
 
+test('resource visibility preference is scoped to each board and round-trips subsets', () => {
+  assert.notEqual(planning.visibilityKey(boardId), planning.visibilityKey('e'.repeat(24)));
+  assert.equal(planning.normalizeVisibleMembers(null), null);
+  assert.equal(planning.normalizeVisibleMembers(planning.visibleMembersValue(null)), null);
+  assert.deepEqual(planning.normalizeVisibleMembers(planning.visibleMembersValue(new Set([memberId, adminId]))),
+    [memberId, adminId].sort());
+  assert.deepEqual(planning.normalizeVisibleMembers(planning.visibleMembersValue(new Set())), []);
+  assert.equal(planning.normalizeVisibleMembers({ version: 1, ids: ['invalid'] }), null);
+});
+
 test('API blocks non-admin reads and writes, then supports CRUD for an admin', async () => {
   const originalFetch = global.fetch;
   const originalRead = store.read, originalUpdate = store.update;

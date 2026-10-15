@@ -62,6 +62,21 @@
     var monday = add(anchor, -((d.getUTCDay() + 6) % 7));
     return { start: monday, end: add(monday, 6) };
   }
+  function visibilityKey(boardId) {
+    return 'resourcePlannerVisibleMembers:' + boardId;
+  }
+  function normalizeVisibleMembers(value) {
+    if (!value || value.version !== 1 || value.ids === null) return null;
+    if (!Array.isArray(value.ids) || value.ids.some(function(id) {
+      return typeof id !== 'string' || !/^[0-9a-f]{24}$/i.test(id);
+    })) return null;
+    return Array.from(new Set(value.ids));
+  }
+  function visibleMembersValue(ids) {
+    return { version: 1, ids: ids === null ? null : Array.from(ids).sort() };
+  }
   return { date: date, add: add, weekdays: weekdays, overlapDays: overlapDays,
-    normalizeDates: normalizeDates, conflicts: conflicts, bounds: bounds };
+    normalizeDates: normalizeDates, conflicts: conflicts, bounds: bounds,
+    visibilityKey: visibilityKey, normalizeVisibleMembers: normalizeVisibleMembers,
+    visibleMembersValue: visibleMembersValue };
 });
