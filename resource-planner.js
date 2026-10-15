@@ -6,6 +6,7 @@
   var timeline = document.getElementById('timeline');
   var status = document.getElementById('planner-status');
   var filter = document.getElementById('member-filter');
+  var search = document.getElementById('resource-search');
 
   function saveVisibility() {
     var value = KBPlanning.visibleMembersValue(visibleMemberIds);
@@ -19,8 +20,12 @@
   }
   function renderFilter() {
     filter.replaceChildren();
+    var query = search.value.trim().toLocaleLowerCase();
+    var matches = 0;
     members.forEach(function(m) {
       var label = document.createElement('label');
+      label.hidden = !m.name.toLocaleLowerCase().includes(query);
+      if (!label.hidden) matches++;
       var checkbox = document.createElement('input'); checkbox.type = 'checkbox';
       checkbox.checked = visibleMemberIds === null || visibleMemberIds.has(m.id);
       checkbox.addEventListener('change', function() {
@@ -35,7 +40,9 @@
     var count = visibleMemberIds === null ? members.length :
       members.filter(function(m) { return visibleMemberIds.has(m.id); }).length;
     document.getElementById('resource-filter-label').textContent =
-      'Resources: ' + (visibleMemberIds === null ? 'All' : count + ' of ' + members.length);
+      visibleMemberIds === null ? 'All resources' :
+        count === 0 ? 'No resources selected' : count + ' of ' + members.length + ' selected';
+    document.getElementById('resource-no-results').hidden = matches !== 0 || !query;
   }
 
   function dateLabel(value) {
@@ -152,7 +159,7 @@
       row.append(name, grid); timeline.appendChild(row);
     });
     if (!shownMembers.length) status.textContent = members.length ?
-      'No resources selected. Use the Resources filter to show members.' : 'No board members found.';
+      'No resources selected. Use Filter resources above to show members.' : 'No board members found.';
     else if (!visibleAssignments.length) status.textContent = 'No assignments in this period.';
     else {
       var count = visibleAssignments.filter(function(a) { return !!conflicts[a.id]; }).length;
@@ -166,6 +173,7 @@
   document.getElementById('month').addEventListener('click', function() { view = 'month'; render(); });
   document.getElementById('refresh').addEventListener('click', refresh);
   document.getElementById('show-archived').addEventListener('change', render);
+  search.addEventListener('input', renderFilter);
   document.getElementById('resource-select-all').addEventListener('click', function() {
     visibleMemberIds = null; renderFilter(); render(); saveVisibility();
   });
