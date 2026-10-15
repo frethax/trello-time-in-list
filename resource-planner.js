@@ -1,10 +1,42 @@
 (function() {
   var t = TrelloPowerUp.iframe({ appKey: '526d48a7eb9050082ce280fe0ac1a67f', appName: 'Kanbrain' });
   var anchor = kbPlanningToday(), view = 'week', members = [], assignments = [];
+  var visibleMemberIds = null, saveFilterChain = Promise.resolve();
   var boardId, token;
   var timeline = document.getElementById('timeline');
   var status = document.getElementById('planner-status');
   var filter = document.getElementById('member-filter');
+
+  function saveVisibility() {
+    var value = KBPlanning.visibleMembersValue(visibleMemberIds);
+    saveFilterChain = saveFilterChain.catch(function() {}).then(function() {
+      return t.set('member', 'private', KBPlanning.visibilityKey(boardId), value);
+    });
+    saveFilterChain.catch(function() {
+      status.textContent = 'Could not save the resource filter. Please try again.';
+      status.className = 'error';
+    });
+  }
+  function renderFilter() {
+    filter.replaceChildren();
+    members.forEach(function(m) {
+      var label = document.createElement('label');
+      var checkbox = document.createElement('input'); checkbox.type = 'checkbox';
+      checkbox.checked = visibleMemberIds === null || visibleMemberIds.has(m.id);
+      checkbox.addEventListener('change', function() {
+        if (visibleMemberIds === null) visibleMemberIds = new Set(members.map(function(x) { return x.id; }));
+        if (checkbox.checked) visibleMemberIds.add(m.id); else visibleMemberIds.delete(m.id);
+        if (visibleMemberIds.size === members.length) visibleMemberIds = null;
+        renderFilter(); render(); saveVisibility();
+      });
+      var name = document.createElement('span'); name.textContent = m.name;
+      label.append(checkbox, name); filter.appendChild(label);
+    });
+    var count = visibleMemberIds === null ? members.length :
+      members.filter(function(m) { return visibleMemberIds.has(m.id); }).length;
+    document.getElementById('resource-filter-label').textContent =
+      'Resources: ' + (visibleMemberIds === null ? 'All' : count + ' of ' + members.length);
+  }
 
   function dateLabel(value) {
     return new Date(value + 'T00:00:00Z').toLocaleDateString(undefined,
@@ -28,14 +60,7 @@
     status.textContent = 'Loading…'; status.className = '';
     return kbPlanningRequest(token, boardId, 'GET').then(function(data) {
       assignments = data.assignments; members = data.members;
-      var selected = filter.value;
-      filter.replaceChildren();
-      var all = document.createElement('option'); all.value = ''; all.textContent = 'All members'; filter.appendChild(all);
-      members.forEach(function(m) {
-        var option = document.createElement('option'); option.value = m.id; option.textContent = m.name;
-        filter.appendChild(option);
-      });
-      filter.value = selected;
+      renderFilter();
       render();
     }).catch(function(e) {
       timeline.replaceChildren(); status.textContent = e.message; status.className = 'error';
@@ -45,15 +70,19 @@
     var bounds = KBPlanning.bounds(anchor, view);
     var days = daysInRange(bounds.start, bounds.end);
     var width = days.length * 44;
+    var shownMembers = members.filter(function(m) {
+      return visibleMemberIds === null || visibleMemberIds.has(m.id);
+    });
+    var shownIds = new Set(shownMembers.map(function(m) { return m.id; }));
     var visibleAssignments = assignments.filter(function(a) {
-      return (document.getElementById('show-archived').checked || !a.archived) &&
+      return shownIds.has(a.memberId) &&
+        (document.getElementById('show-archived').checked || !a.archived) &&
         a.dates.some(function(day) { return day >= bounds.start && day <= bounds.end; });
     });
     var conflicts = KBPlanning.conflicts(visibleAssignments.map(function(a) {
       return { id: a.id, memberId: a.memberId,
         dates: a.dates.filter(function(day) { return day >= bounds.start && day <= bounds.end; }) };
     }));
-    var shownMembers = members.filter(function(m) { return !filter.value || filter.value === m.id; });
     var heading = view === 'month' ? new Date(bounds.start + 'T00:00:00Z').toLocaleDateString(undefined,
       { timeZone: 'UTC', month: 'long', year: 'numeric' }) : dateLabel(bounds.start) + ' – ' + dateLabel(bounds.end);
     document.getElementById('period-label').textContent = heading;
@@ -122,7 +151,8 @@
       });
       row.append(name, grid); timeline.appendChild(row);
     });
-    if (!shownMembers.length) status.textContent = 'No board members found.';
+    if (!shownMembers.length) status.textContent = members.length ?
+      'No resources selected. Use the Resources filter to show members.' : 'No board members found.';
     else if (!visibleAssignments.length) status.textContent = 'No assignments in this period.';
     else {
       var count = visibleAssignments.filter(function(a) { return !!conflicts[a.id]; }).length;
@@ -136,10 +166,20 @@
   document.getElementById('month').addEventListener('click', function() { view = 'month'; render(); });
   document.getElementById('refresh').addEventListener('click', refresh);
   document.getElementById('show-archived').addEventListener('change', render);
-  filter.addEventListener('change', render);
+  document.getElementById('resource-select-all').addEventListener('click', function() {
+    visibleMemberIds = null; renderFilter(); render(); saveVisibility();
+  });
+  document.getElementById('resource-select-none').addEventListener('click', function() {
+    visibleMemberIds = new Set(); renderFilter(); render(); saveVisibility();
+  });
   Promise.all([t.board('id'), t.getRestApi().getToken()]).then(function(values) {
     boardId = values[0].id; token = values[1];
     if (!token) throw new Error('Connect your Trello account in Kanbrain to view the planner.');
-    return refresh();
+    return t.get('member', 'private', KBPlanning.visibilityKey(boardId))
+      .then(function(saved) {
+        var ids = KBPlanning.normalizeVisibleMembers(saved);
+        visibleMemberIds = ids === null ? null : new Set(ids);
+      }, function() {})
+      .then(refresh);
   }).catch(function(e) { status.textContent = e.message; status.className = 'error'; });
 })();

@@ -6,7 +6,9 @@ Trello Power-Up for time in list, card numbering, subtasks, and resource plannin
 
 Board admins plan directly inside a card. Select a board member, then click individual dates in the calendar; dates can have gaps and span months. Each card has one editable plan per member. Saturdays and Sundays cannot be selected; public holidays can. Every selected date is one full working day. Planning does not read or change the Time in List `workdays` setting.
 
-The board **Resource Planner** shows selected days by member in weekly or monthly views. Shared selected days for the same member are highlighted as conflicts. Click an allocation to open its Trello card. Archived cards can be shown with the **Show archived cards** option.
+The calendar appears in the card's **Kanbrain** section immediately below the main task/subtask controls once the Trello account is connected and the server confirms board admin access. The card panel shows an access message if that check is denied and a configuration or request error if loading fails. Connecting Trello from the card's existing prompt retries the calendar without requiring a page reload.
+
+The board **Resource Planner** shows selected days by member in weekly or monthly views. Shared selected days for the same member are highlighted as conflicts. Click an allocation to open its Trello card. Archived cards can be shown with the **Show archived cards** option. Use **Resources** in the planner, or the **Resource Planner** section in Kanbrain Settings, to choose any subset of board members. The choice is saved per board in the current admin's member-private Power-Up storage and does not hide or delete assignments for other admins.
 
 ### Access and storage
 
@@ -30,4 +32,4 @@ Redeploy after connecting the store: Vercel deployments receive environment vari
 node --test
 ```
 
-Tests cover individual date selection, weekends and holidays, exact-day overlaps, admin access, role changes, archived cards, and plan CRUD. Live Trello and Redis integration must also be checked after deployment.
+Tests cover individual date selection, weekends and holidays, exact-day overlaps, admin access, role changes, archived cards, and plan CRUD. Live Trello and Blob integration must also be checked after deployment.

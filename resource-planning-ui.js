@@ -23,9 +23,13 @@ function kbPlanningToday() {
 function kbResourceCard(t) {
   var panel = document.getElementById('kb-resource');
   if (!panel) return;
+  // Trello can finish authorization after this iframe first renders. A later
+  // render must retry the request without attaching the form handlers twice.
+  if (panel._kbResourceLoad) return panel._kbResourceLoad();
   Promise.all([t.board('id'), t.card('id'), t.getRestApi().getToken()]).then(function(context) {
     var boardId = context[0].id, cardId = context[1].id, token = context[2];
     if (!token) return;
+    if (panel._kbResourceLoad) return panel._kbResourceLoad();
     var assignments = [], members = [], selected = new Set();
     var month = kbPlanningToday().slice(0, 7) + '-01';
     var form = document.getElementById('kb-plan-form');
@@ -47,14 +51,21 @@ function kbResourceCard(t) {
       renderCalendar();
     }
     function showError(e) {
-      if (e.status === 403 || e.status === 401) { panel.hidden = true; return; }
       panel.hidden = false;
-      status.textContent = e.message;
+      var denied = e.status === 403 || e.status === 401;
+      form.hidden = denied;
+      list.hidden = denied;
+      status.textContent = e.status === 403 ? 'Only board admins can open Resource Planning on this board.' :
+        e.status === 401 ? 'Connect your Trello account again to open Resource Planning.' : e.message;
       status.className = 'kb-plan-status error';
       resize();
     }
     function load() {
       return kbPlanningRequest(token, boardId, 'GET', null, cardId).then(function(data) {
+        form.hidden = false;
+        list.hidden = false;
+        status.textContent = '';
+        status.className = 'kb-plan-status';
         assignments = data.assignments;
         members = data.members;
         var previousMember = member.value;
@@ -187,6 +198,13 @@ function kbResourceCard(t) {
         reset(); return load();
       }).catch(showError).finally(function() { submit.disabled = false; });
     });
+    panel._kbResourceLoad = function() {
+      return t.getRestApi().getToken().then(function(currentToken) {
+        if (!currentToken) { panel.hidden = true; return; }
+        token = currentToken;
+        return load();
+      });
+    };
     load();
-  }).catch(function() { /* No token/context: no planning data is exposed. */ });
+  }).catch(function() { /* No Trello context: no planning data is exposed. */ });
 }
