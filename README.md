@@ -16,7 +16,7 @@ The previous Resource Planner stored date ranges in each admin's **member-privat
 
 ### Deployment
 
-The repository is configured for Vercel. Provision an Upstash Redis database with a REST endpoint and set these **server-only** Vercel environment variables:
+The repository is configured for Vercel. In the Vercel project's **Storage** or **Integrations** area, create an Upstash Redis database and connect it to `trello-time-in-list`. The connection must make its REST URL and token available to the project. Set these **server-only** environment variables for both Preview and Production:
 
 | Variable | Value |
 | --- | --- |
@@ -24,7 +24,7 @@ The repository is configured for Vercel. Provision an Upstash Redis database wit
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token |
 
-Deploy the static files and `/api/resource-planning` function together. Do not put the Redis token in client code or Trello Power-Up storage. Until these variables are configured, the new planner API returns `503`; the existing Power-Up features and previous private planner continue to work.
+Redeploy after adding the variables: Vercel deployments receive environment variables at build/deployment time. Deploy the static files and `/api/resource-planning` function together. Do not put the Redis token in client code or Trello Power-Up storage. Until these variables are configured, the new planner API returns `503`; the existing Power-Up features and previous private planner continue to work. A ready Preview deployment does not make the feature appear in Trello: `connector.js` points to the production domain, so the production deployment must include this change.
 
 ### Tests
 
