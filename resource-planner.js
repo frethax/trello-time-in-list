@@ -1,6 +1,7 @@
 /* Kanbrain resource allocations: date-only, Monday–Friday inclusive.
-   Stored per card in shared Power-Up storage. IMPORTANT: UI is admin-gated,
-   but shared Power-Up data is NOT confidential from board members. */
+   Allocations are stored per-card in Trello PRIVATE Power-Up storage, scoped
+   to the signed-in member. Other board users, including admins, cannot read them.
+   Pre-migration shared allocations are copied then deleted on first admin load. */
 (function(){
 'use strict';
 var t=TrelloPowerUp.iframe({appKey:'526d48a7eb9050082ce280fe0ac1a67f',appName:'Kanbrain'});
@@ -14,8 +15,28 @@ function plusDays(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x;}
 function workdays(a,b){if(!/^\d{4}-\d\d-\d\d$/.test(a)||!/^\d{4}-\d\d-\d\d$/.test(b)||a>b)return 0;
  var n=0;for(var d=localDate(a),end=localDate(b);d<=end;d=plusDays(d,1)){if(d.getDay()!==0&&d.getDay()!==6)n++;}return n;}
 function valid(row){return row&&typeof row.memberId==='string'&&/^\d{4}-\d\d-\d\d$/.test(row.start)&&/^\d{4}-\d\d-\d\d$/.test(row.end)&&row.start<=row.end;}
-function getAlloc(id){return t.get(id,'shared','kbResourceAllocations').then(function(r){return Array.isArray(r)?r.filter(valid):[];}).catch(function(){return [];});}
-function saveAlloc(id,rows){return t.set(id,'shared','kbResourceAllocations',rows);}
+var ALLOC_KEY='kbResourceAllocations';
+function saveAlloc(id,rows){return t.set(id,'private',ALLOC_KEY,rows);}
+// Migrate previously shared allocations for the CURRENT member only.
+// Never delete shared records unless private save succeeded; propagate errors
+// instead of pretending migration completed. Board view visits every open card.
+function getAlloc(id){
+ return t.get(id,'private',ALLOC_KEY).then(function(privateRows){
+   return t.get(id,'shared',ALLOC_KEY).then(function(sharedRows){
+     var legacy=Array.isArray(sharedRows)?sharedRows.filter(valid):[];
+     if(!legacy.length)return Array.isArray(privateRows)?privateRows.filter(valid):[];
+     var existing=Array.isArray(privateRows)?privateRows.filter(valid):[];
+     var combined=existing.slice();
+     legacy.forEach(function(row){
+       if(!combined.some(function(x){return x.id&&x.id===row.id||
+         x.memberId===row.memberId&&x.start===row.start&&x.end===row.end;}))combined.push(row);
+     });
+     return saveAlloc(id,combined).then(function(){
+       return t.remove(id,'shared',ALLOC_KEY).then(function(){return combined;});
+     });
+   });
+ });
+}
 function api(path){return fetch('https://api.trello.com/1'+path+(path.includes('?')?'&':'?')+'key=526d48a7eb9050082ce280fe0ac1a67f&token='+encodeURIComponent(token)).then(function(r){if(!r.ok)throw Error('Trello API '+r.status);return r.json();});}
 function memberName(id){var m=members.find(function(m){return m.id===id;});return m?(m.fullName||m.username):'Unknown member';}
 function addOption(select,value,label){var o=document.createElement('option');o.value=value;o.textContent=label;select.appendChild(o);}
@@ -32,7 +53,7 @@ function renderCard(){
 }
 function startCard(){cardId=query.get('cardId');if(!cardId)return message('Missing card ID',true);
  var card=cards.find(function(c){return c.id===cardId;});$('cardTitle').textContent=card?card.name:'Task allocation';
- $('editor').hidden=false;getAlloc(cardId).then(function(a){assignments=a;renderCard();message('');});}
+ $('editor').hidden=false;getAlloc(cardId).then(function(a){assignments=a;renderCard();message('');}).catch(function(e){message('Could not load or migrate allocations: '+e.message,true);});}
 $('allocationForm').onsubmit=function(e){e.preventDefault();var row={memberId:$('member').value,start:$('start').value,end:$('end').value};
  if(!valid(row))return message('Choose a member and valid dates.',true);
  var next=assignments.slice();if(editing===null){row.id='a'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);next.push(row);}
