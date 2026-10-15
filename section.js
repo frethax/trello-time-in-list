@@ -6,7 +6,7 @@
 
   var STRINGS = {
     en: {
-      currentStage: 'Current Stage', cardAge: 'Card Age',
+      currentStage: 'Current Stage', cardAge: 'Card Age', leadTime: 'Lead Time', cycleTime: 'Cycle Time',
       mostActive: 'Most Active', createdBy: 'Created By',
       timePerList: 'Time Per List', cardHistory: 'Card History',
       noData: 'No action data found for this card.',
@@ -22,7 +22,7 @@
       noRelated: 'No related cards. Attach another card on this board to link it here.'
     },
     tr: {
-      currentStage: 'Mevcut Aşama', cardAge: 'Kart Yaşı',
+      currentStage: 'Mevcut Aşama', cardAge: 'Kart Yaşı', leadTime: 'Lead Time', cycleTime: 'Cycle Time',
       mostActive: 'En Aktif', createdBy: 'Kartı Açan',
       timePerList: 'Liste Bazlı Süre', cardHistory: 'Kart Geçmişi',
       noData: 'Bu kart için veri bulunamadı.',
@@ -38,7 +38,7 @@
       noRelated: 'İlişkili kart yok. Bu board\'daki bir kartı buraya bağlamak için karta ekleyin (Attachment → Card).'
     },
     es: {
-      currentStage: 'Etapa Actual', cardAge: 'Edad de la Tarjeta',
+      currentStage: 'Etapa Actual', cardAge: 'Edad de la Tarjeta', leadTime: 'Lead Time', cycleTime: 'Cycle Time',
       mostActive: 'Más Activo', createdBy: 'Creado Por',
       timePerList: 'Tiempo por Lista', cardHistory: 'Historial',
       noData: 'No se encontraron datos para esta tarjeta.',
@@ -54,7 +54,7 @@
       noRelated: 'No hay tarjetas relacionadas. Adjunta otra tarjeta de este tablero para enlazarla aquí.'
     },
     pt: {
-      currentStage: 'Etapa Atual', cardAge: 'Idade do Cartão',
+      currentStage: 'Etapa Atual', cardAge: 'Idade do Cartão', leadTime: 'Lead Time', cycleTime: 'Cycle Time',
       mostActive: 'Mais Ativo', createdBy: 'Criado Por',
       timePerList: 'Tempo por Lista', cardHistory: 'Histórico',
       noData: 'Nenhum dado encontrado para este cartão.',
@@ -312,7 +312,7 @@
       if (activityCount[name] > mostActiveCount) { mostActive = name; mostActiveCount = activityCount[name]; }
     });
 
-    var timeline   = buildTimeline(ordered, isDone);
+    var timeline   = buildTimeline(ordered, isDone, currentListName);
     var totals     = buildTotals(timeline);
     var listKeys   = Object.keys(totals);
     var grandTotal = listKeys.reduce(function(s, k){ return s + totals[k]; }, 0);
@@ -352,6 +352,20 @@
     left.appendChild(leftRow('📊', L.cardAge,
       '<div style="font-size:16px;font-weight:700;color:#0052cc;line-height:1.3">' + formatTime(totalTime) + '</div>'
     , !mostActive && !createdBy));
+
+    // Lead Time: creation -> first entry to the current Done list.
+    // Cycle Time: first list transition -> first entry to the current Done list.
+    // Both are completed-task metrics; do not invent a cycle start for unmoved cards.
+    if (isDone && createAction && moveActions.length) {
+      var completedAt = new Date(lastMove.date);
+      var leadMs = kbWorkMs(createAction.date, completedAt, workdaysOn);
+      left.appendChild(leftRow('↗', L.leadTime,
+        '<div style="font-size:14px;font-weight:600;color:#0052cc">' + formatTime(leadMs) + '</div>', false));
+      var startedAt = moveActions[0].date;
+      var cycleMs = kbWorkMs(startedAt, completedAt, workdaysOn);
+      left.appendChild(leftRow('↻', L.cycleTime,
+        '<div style="font-size:14px;font-weight:600;color:#0052cc">' + formatTime(cycleMs) + '</div>', false));
+    }
 
     if (mostActive) {
       left.appendChild(leftRow('👤', L.mostActive,
@@ -551,12 +565,16 @@
     return day + '.' + mon + ' ' + h + ':' + min;
   }
 
-  function buildTimeline(actions, isDone) {
+  function buildTimeline(actions, isDone, fallbackListName) {
     var timeline = [], createAction = null, moveActions = [];
     actions.forEach(function(a) {
       if (a.type === 'createCard') createAction = a;
       else if (a.data && a.data.listAfter) moveActions.push(a);
     });
+    if (createAction && !moveActions.length) {
+      var originalList = (createAction.data && createAction.data.list && createAction.data.list.name) || fallbackListName;
+      if (originalList) timeline.push({ list: originalList, date: new Date(createAction.date), duration: kbWorkMs(createAction.date, new Date(), workdaysOn) });
+    }
     if (createAction && moveActions.length) {
       var init = (createAction.data && createAction.data.list)
         ? createAction.data.list.name
