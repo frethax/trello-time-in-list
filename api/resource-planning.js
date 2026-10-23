@@ -31,7 +31,8 @@ async function handler(req, res) {
   }
   try {
     if (!process.env.TRELLO_API_KEY ||
-        (!process.env.BLOB_STORE_ID && !process.env.BLOB_READ_WRITE_TOKEN)) {
+        (!(req.method === 'GET' && req.query.view === 'members') &&
+          !process.env.BLOB_STORE_ID && !process.env.BLOB_READ_WRITE_TOKEN)) {
       throw error(503, 'Planning is not configured');
     }
     const boardId = req.query.boardId;
@@ -51,6 +52,11 @@ async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
+      // Settings only needs the resource list, not the planning document.
+      if (req.query.view === 'members') {
+        const members = await trello('/boards/' + boardId + '/members?fields=id,fullName,username', token);
+        return send(res, 200, { members: members.map(m => ({ id: m.id, name: m.fullName || m.username || m.id })) });
+      }
       const cardId = req.query.cardId;
       if (cardId && (typeof cardId !== 'string' || !ID.test(cardId))) throw error(400, 'Invalid card');
       const [stored, members, cards] = await Promise.all([
@@ -75,16 +81,18 @@ async function handler(req, res) {
           !/^(?:[0-9a-f]{24}:[0-9a-f]{24}|[0-9a-f-]{36})$/i.test(body.id)) {
         throw error(400, 'Invalid assignment');
       }
+      if (req.method === 'DELETE') {
+        const result = await store.update(boardId, assignments => {
+          if (!assignments.some(a => a.id === body.id)) throw error(404, 'Assignment not found');
+          const remaining = assignments.filter(a => a.id !== body.id);
+          return { assignments: remaining, result: { assignments: remaining } };
+        });
+        return send(res, 200, { deleted: true, assignments: result.assignments });
+      }
       const stored = await store.read(boardId);
+      var previousAssignments = stored.assignments;
       var previous = stored.assignments.find(a => a.id === body.id);
       if (!previous) throw error(404, 'Assignment not found');
-      if (req.method === 'DELETE') {
-        await store.update(boardId, assignments => {
-          if (!assignments.some(a => a.id === body.id)) throw error(404, 'Assignment not found');
-          return { assignments: assignments.filter(a => a.id !== body.id) };
-        });
-        return send(res, 200, { deleted: true });
-      }
     }
     const cardId = req.method === 'PUT' ? previous.cardId : body.cardId;
     const memberId = req.method === 'PUT' ? previous.memberId : body.memberId;
@@ -103,11 +111,16 @@ async function handler(req, res) {
     const assignment = { id: req.method === 'PUT' ? previous.id : cardId + ':' + memberId,
       cardId, cardName: card.name, cardUrl: card.shortUrl,
       memberId, dates };
-    await store.update(boardId, assignments => {
+    // Saving an unchanged plan needs no write or additional metadata reads.
+    if (req.method === 'PUT' && JSON.stringify(assignment) === JSON.stringify(previous)) {
+      return send(res, 200, { assignment, assignments: previousAssignments });
+    }
+    const result = await store.update(boardId, assignments => {
       const index = assignments.findIndex(a => a.id === assignment.id);
       if (req.method === 'POST') {
         if (index !== -1) throw error(409, 'This member already has a plan on this card; edit it instead');
-        return { assignments: [...assignments, assignment] };
+        const updated = [...assignments, assignment];
+        return { assignments: updated, result: { assignments: updated } };
       }
       if (index === -1) throw error(404, 'Assignment not found');
       if (JSON.stringify(assignments[index]) !== JSON.stringify(previous)) {
@@ -115,9 +128,9 @@ async function handler(req, res) {
       }
       const updated = assignments.slice();
       updated[index] = assignment;
-      return { assignments: updated };
+      return { assignments: updated, result: { assignments: updated } };
     });
-    return send(res, req.method === 'POST' ? 201 : 200, { assignment });
+    return send(res, req.method === 'POST' ? 201 : 200, { assignment, assignments: result.assignments });
   } catch (e) {
     // Never return tokens, Trello URLs or storage credentials in errors.
     return send(res, e.status || 500, { error: e.status ? e.message : 'Planning request failed' });

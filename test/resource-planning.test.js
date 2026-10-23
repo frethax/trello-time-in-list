@@ -78,9 +78,9 @@ test('API blocks non-admin reads and writes, then supports CRUD for an admin', a
     else throw new Error('Unexpected URL ' + path);
     return { ok: true, json: async () => result };
   };
-  async function request(method, body) {
+  async function request(method, body, query = {}) {
     let status, data;
-    await handler({ method, query: { boardId }, headers: { authorization: 'Bearer test-token-12345678901234567890' }, body }, {
+    await handler({ method, query: { boardId, ...query }, headers: { authorization: 'Bearer test-token-12345678901234567890' }, body }, {
       setHeader() {}, status(code) { status = code; return this; }, json(value) { data = value; }
     });
     return { status, data };
@@ -89,7 +89,14 @@ test('API blocks non-admin reads and writes, then supports CRUD for an admin', a
     assert.equal((await request('GET')).status, 403);
     assert.equal((await request('POST', { cardId, memberId, dates: ['2026-10-19'] })).status, 403);
     assert.equal(storeCalls, 0);
+    assert.equal((await request('GET', null, { view: 'members' })).status, 403);
     role = 'admin';
+    delete process.env.BLOB_STORE_ID;
+    const memberList = await request('GET', null, { view: 'members' });
+    assert.equal(memberList.status, 200);
+    assert.equal(memberList.data.members[0].name, 'Casey');
+    assert.equal(storeCalls, 0, 'settings must not touch Blob');
+    process.env.BLOB_STORE_ID = 'test-store';
     assert.equal((await request('POST', { cardId, memberId, dates: ['2026-10-17'] })).status, 400);
     assert.equal((await request('POST', { cardId, memberId: adminId, dates: ['2026-10-19'] })).status, 400);
     cardBoard = 'eeeeeeeeeeeeeeeeeeeeeeee';
@@ -97,7 +104,13 @@ test('API blocks non-admin reads and writes, then supports CRUD for an admin', a
     cardBoard = boardId;
     const created = await request('POST', { cardId, memberId, dates: ['2026-10-20', '2026-10-19', '2026-10-23'] });
     assert.equal(created.status, 201);
+    assert.equal(created.data.assignments.length, 1);
     assert.deepEqual(created.data.assignment.dates, ['2026-10-19', '2026-10-20', '2026-10-23']);
+    const beforeUnchanged = storeCalls;
+    const unchanged = await request('PUT', { id: created.data.assignment.id, memberId,
+      dates: ['2026-10-23', '2026-10-19', '2026-10-20'] });
+    assert.equal(unchanged.status, 200);
+    assert.equal(storeCalls - beforeUnchanged, 1, 'unchanged save only reads and never writes');
     assert.equal((await request('POST', { cardId, memberId, dates: ['2026-10-26'] })).status, 409);
     assert.equal((await request('GET')).data.assignments.length, 1);
     cardClosed = true;
@@ -111,7 +124,12 @@ test('API blocks non-admin reads and writes, then supports CRUD for an admin', a
     assert.equal((await request('DELETE', { id })).status, 403);
     assert.equal(rows.length, 1);
     role = 'admin';
-    assert.equal((await request('DELETE', { id })).status, 200);
+    const beforeDelete = storeCalls;
+    const deleted = await request('DELETE', { id });
+    assert.equal(deleted.status, 200);
+    assert.deepEqual(deleted.data.assignments, []);
+    assert.equal(storeCalls - beforeDelete, 1, 'delete uses only the protected update, without a preliminary read');
+    assert.equal((await request('DELETE', { id })).status, 404);
     assert.equal((await request('GET')).data.assignments.length, 0);
   } finally {
     global.fetch = originalFetch;

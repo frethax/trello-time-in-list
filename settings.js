@@ -354,7 +354,7 @@ function savePlannerVisibility() {
 
 function loadPlannerVisibility(boardId, token) {
   return Promise.all([
-    kbPlanningRequest(token, boardId, 'GET'),
+    kbPlanningRequest(token, boardId, 'GET', null, null, 'members'),
     t.get('member', 'private', KBPlanning.visibilityKey(boardId)).catch(function() { return null; })
   ]).then(function(results) {
     if (boardId !== currentBoardId) return;

@@ -1,8 +1,12 @@
 /* Shared, same-origin client for the admin-gated planning API. */
-function kbPlanningRequest(token, boardId, method, body, cardId) {
+var kbPlanningPending = new Map();
+function kbPlanningRequest(token, boardId, method, body, cardId, view) {
   var query = '?boardId=' + encodeURIComponent(boardId) +
-    (cardId ? '&cardId=' + encodeURIComponent(cardId) : '');
-  return fetch('/api/resource-planning' + query, {
+    (cardId ? '&cardId=' + encodeURIComponent(cardId) : '') +
+    (view ? '&view=' + encodeURIComponent(view) : '');
+  var key = token + ':' + query;
+  if (method === 'GET' && kbPlanningPending.has(key)) return kbPlanningPending.get(key);
+  var request = fetch('/api/resource-planning' + query, {
     method: method,
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
@@ -13,6 +17,12 @@ function kbPlanningRequest(token, boardId, method, body, cardId) {
       return data;
     });
   });
+  if (method === 'GET') {
+    kbPlanningPending.set(key, request);
+    var clear = function() { if (kbPlanningPending.get(key) === request) kbPlanningPending.delete(key); };
+    request.then(clear, clear);
+  }
+  return request;
 }
 function kbPlanningToday() {
   var d = new Date();
@@ -31,6 +41,7 @@ function kbResourceCard(t) {
     if (!token) return;
     if (panel._kbResourceLoad) return panel._kbResourceLoad();
     var assignments = [], members = [], selected = new Set();
+    var lastLoaded = 0, lastAttempt = 0, loading = null;
     var month = kbPlanningToday().slice(0, 7) + '-01';
     var form = document.getElementById('kb-plan-form');
     var member = document.getElementById('kb-plan-member');
@@ -61,7 +72,12 @@ function kbResourceCard(t) {
       resize();
     }
     function load() {
-      return kbPlanningRequest(token, boardId, 'GET', null, cardId).then(function(data) {
+      if (loading) return loading;
+      lastAttempt = Date.now();
+      var requestToken = token;
+      loading = kbPlanningRequest(requestToken, boardId, 'GET', null, cardId).then(function(data) {
+        if (token !== requestToken) return;
+        lastLoaded = Date.now();
         form.hidden = false;
         list.hidden = false;
         status.textContent = '';
@@ -80,7 +96,17 @@ function kbResourceCard(t) {
         });
         member.value = previousMember;
         renderList(); renderCalendar(); panel.hidden = false; resize();
-      }).catch(showError);
+      }).catch(function(e) { if (token === requestToken) showError(e); })
+        .finally(function() { loading = null; });
+      return loading;
+    }
+    function applySaved(data) {
+      // Older deployments may not yet include the committed snapshot.
+      if (!Array.isArray(data.assignments)) { reset(); return load(); }
+      // Use the exact committed snapshot returned by the mutation; no extra Blob GET.
+      assignments = data.assignments.filter(function(a) { return a.cardId === cardId; });
+      lastLoaded = Date.now();
+      reset(); renderList(); resize();
     }
     function renderList() {
       list.replaceChildren();
@@ -115,9 +141,10 @@ function kbResourceCard(t) {
             return;
           }
           remove.disabled = true;
-          kbPlanningRequest(token, boardId, 'DELETE', { id: a.id }).then(function() {
-            status.textContent = 'Plan deleted.'; status.className = 'kb-plan-status';
-            reset(); return load();
+          kbPlanningRequest(token, boardId, 'DELETE', { id: a.id }).then(function(data) {
+            return Promise.resolve(applySaved(data)).then(function() {
+              status.textContent = 'Plan deleted.'; status.className = 'kb-plan-status';
+            });
           }).catch(showError).finally(function() { remove.disabled = false; });
         });
         actions.append(edit, remove); row.append(info, actions); list.appendChild(row);
@@ -193,15 +220,23 @@ function kbResourceCard(t) {
       var existing = currentAssignment();
       var body = { memberId: member.value, dates: dates, cardId: cardId };
       if (existing) body.id = existing.id;
-      kbPlanningRequest(token, boardId, existing ? 'PUT' : 'POST', body).then(function() {
-        status.textContent = 'Selected days saved.'; status.className = 'kb-plan-status';
-        reset(); return load();
+      kbPlanningRequest(token, boardId, existing ? 'PUT' : 'POST', body).then(function(data) {
+        return Promise.resolve(applySaved(data)).then(function() {
+          status.textContent = 'Selected days saved.'; status.className = 'kb-plan-status';
+        });
       }).catch(showError).finally(function() { submit.disabled = false; });
     });
     panel._kbResourceLoad = function() {
       return t.getRestApi().getToken().then(function(currentToken) {
-        if (!currentToken) { panel.hidden = true; return; }
+        if (!currentToken) { token = null; panel.hidden = true; lastLoaded = lastAttempt = 0; return; }
+        var changedToken = token !== currentToken;
+        if (changedToken) lastLoaded = lastAttempt = 0;
         token = currentToken;
+        if (changedToken) return Promise.resolve(loading).then(load);
+        // Coalesce Trello render bursts and preserve a form being edited.
+        // No timer/polling: reopening the card always creates a fresh iframe.
+        if (Date.now() - Math.max(lastLoaded, lastAttempt) < 15000) return loading;
+        if (member.value) return;
         return load();
       });
     };
