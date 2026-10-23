@@ -26,6 +26,14 @@ The repository is configured for Vercel. A **private** Vercel Blob store named `
 
 Redeploy after connecting the store: Vercel deployments receive environment variables at build/deployment time. Deploy the static files and `/api/resource-planning` function together. Do not put Blob credentials in client code or Trello Power-Up storage. If the store is disconnected, the planner API returns `503`; unrelated Power-Up features continue to work. A ready Preview deployment does not make the feature appear in Trello: `connector.js` points to the production domain, so the production deployment must include this change.
 
+### Blob operation budget
+
+Settings requests `GET /api/resource-planning?boardId=...&view=members` after the same current-admin check and never reads Blob. Card render bursts reuse an in-flight request and suppress automatic reloads for 15 seconds (including failures). Reopening the card or changing credentials reloads; active form selections are preserved during automatic renders. Board planner Refresh still reads current data. No background polling or persistent browser data cache is added.
+
+Mutation responses include the committed board assignment snapshot, so the card UI does not issue a follow-up GET. Successful normal paths for an existing document use 3 Simple Operations for POST, 4 for PUT, and 3 for DELETE; an unchanged PUT uses one read and no write. Conflicts can add retries. Writes retain uncached reads, the two metadata checks, and conditional PUT protection. API responses remain private/no-store and every API call checks current admin membership. The storage format and existing documents are unchanged.
+
+These reductions do not reset exhausted Hobby allowances. Do not delete the store to recover quota; retain existing planning data. Live Trello/Blob checks remain necessary after deployment.
+
 ### Tests
 
 ```sh
