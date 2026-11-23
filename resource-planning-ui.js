@@ -31,6 +31,10 @@ function kbResourceCard(t) {
     if (!token) return;
     if (panel._kbResourceLoad) return panel._kbResourceLoad();
     var assignments = [], members = [], selected = new Set();
+    // Trello re-renders card sections frequently. Avoid another Blob GET on
+    // every render while still refreshing after edits and periodically.
+    var lastLoadedAt = 0, pendingLoad = null;
+    var LOAD_REFRESH_MS = 15 * 60 * 1000;
     var month = kbPlanningToday().slice(0, 7) + '-01';
     var form = document.getElementById('kb-plan-form');
     var member = document.getElementById('kb-plan-member');
@@ -60,8 +64,13 @@ function kbResourceCard(t) {
       status.className = 'kb-plan-status error';
       resize();
     }
-    function load() {
-      return kbPlanningRequest(token, boardId, 'GET', null, cardId).then(function(data) {
+    function load(force) {
+      if (pendingLoad) return pendingLoad;
+      if (!force && lastLoadedAt && Date.now() - lastLoadedAt < LOAD_REFRESH_MS) {
+        return Promise.resolve();
+      }
+      pendingLoad = kbPlanningRequest(token, boardId, 'GET', null, cardId).then(function(data) {
+        lastLoadedAt = Date.now();
         form.hidden = false;
         list.hidden = false;
         status.textContent = '';
@@ -80,7 +89,8 @@ function kbResourceCard(t) {
         });
         member.value = previousMember;
         renderList(); renderCalendar(); panel.hidden = false; resize();
-      }).catch(showError);
+      }).catch(showError).finally(function() { pendingLoad = null; });
+      return pendingLoad;
     }
     function renderList() {
       list.replaceChildren();
@@ -117,7 +127,7 @@ function kbResourceCard(t) {
           remove.disabled = true;
           kbPlanningRequest(token, boardId, 'DELETE', { id: a.id }).then(function() {
             status.textContent = 'Plan deleted.'; status.className = 'kb-plan-status';
-            reset(); return load();
+            reset(); return load(true);
           }).catch(showError).finally(function() { remove.disabled = false; });
         });
         actions.append(edit, remove); row.append(info, actions); list.appendChild(row);
@@ -195,7 +205,7 @@ function kbResourceCard(t) {
       if (existing) body.id = existing.id;
       kbPlanningRequest(token, boardId, existing ? 'PUT' : 'POST', body).then(function() {
         status.textContent = 'Selected days saved.'; status.className = 'kb-plan-status';
-        reset(); return load();
+        reset(); return load(true);
       }).catch(showError).finally(function() { submit.disabled = false; });
     });
     panel._kbResourceLoad = function() {
