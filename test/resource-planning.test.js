@@ -56,7 +56,8 @@ test('API blocks non-admin reads and writes, then supports CRUD for an admin', a
   process.env.BLOB_STORE_ID = 'test-store';
   let role = 'normal', storeCalls = 0, cardBoard = boardId, cardClosed = false;
   let rows = [];
-  store.read = async () => { storeCalls++; return { assignments: rows.slice() }; };
+  let readCalls = 0;
+  store.read = async () => { storeCalls++; readCalls++; return { assignments: rows.slice() }; };
   store.update = async (_, change) => {
     storeCalls++;
     const next = change(rows.slice());
@@ -104,14 +105,21 @@ test('API blocks non-admin reads and writes, then supports CRUD for an admin', a
     assert.equal((await request('GET')).data.assignments[0].archived, true);
     cardClosed = false;
     const id = created.data.assignment.id;
+    const readsBeforeWrite = readCalls;
     assert.equal((await request('PUT', { id, memberId, dates: ['2026-10-20', '2026-10-26'] })).status, 200);
+    // Writes must not add a separate (billed) Blob read before store.update.
+    assert.equal(readCalls, readsBeforeWrite);
+    assert.equal((await request('PUT', { id: '00000000-0000-4000-8000-000000000000', cardId, memberId, dates: ['2026-10-20'] })).status, 404);
     assert.deepEqual((await request('GET')).data.assignments[0].dates, ['2026-10-20', '2026-10-26']);
     role = 'normal';
     assert.equal((await request('GET')).status, 403);
     assert.equal((await request('DELETE', { id })).status, 403);
     assert.equal(rows.length, 1);
     role = 'admin';
+    const readsBeforeDelete = readCalls;
     assert.equal((await request('DELETE', { id })).status, 200);
+    assert.equal(readCalls, readsBeforeDelete);
+    assert.equal((await request('DELETE', { id })).status, 404);
     assert.equal((await request('GET')).data.assignments.length, 0);
   } finally {
     global.fetch = originalFetch;

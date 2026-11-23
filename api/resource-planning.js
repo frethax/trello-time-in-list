@@ -75,9 +75,9 @@ async function handler(req, res) {
           !/^(?:[0-9a-f]{24}:[0-9a-f]{24}|[0-9a-f-]{36})$/i.test(body.id)) {
         throw error(400, 'Invalid assignment');
       }
-      const stored = await store.read(boardId, { fresh: true });
-      var previous = stored.assignments.find(a => a.id === body.id);
-      if (!previous) throw error(404, 'Assignment not found');
+      // No separate pre-read: every Blob read on a write path is an origin
+      // read (a billed Simple Operation). store.update already reads the
+      // current document, so existence is checked inside the change.
       if (req.method === 'DELETE') {
         await store.update(boardId, assignments => {
           if (!assignments.some(a => a.id === body.id)) throw error(404, 'Assignment not found');
@@ -86,12 +86,15 @@ async function handler(req, res) {
         return send(res, 200, { deleted: true });
       }
     }
-    const cardId = req.method === 'PUT' ? previous.cardId : body.cardId;
-    const memberId = req.method === 'PUT' ? previous.memberId : body.memberId;
+    // New-style ids are "cardId:memberId"; legacy UUID ids rely on the body.
+    const pair = req.method === 'PUT' ? /^([0-9a-f]{24}):([0-9a-f]{24})$/i.exec(body.id) : null;
+    const cardId = pair ? pair[1] : body.cardId;
+    const memberId = pair ? pair[2] : body.memberId;
     const dates = planning.normalizeDates(body.dates);
     if (typeof cardId !== 'string' || !ID.test(cardId) ||
         typeof memberId !== 'string' || !ID.test(memberId) || !dates ||
-        (req.method === 'PUT' && body.memberId && body.memberId !== memberId)) {
+        (pair && body.memberId && body.memberId !== memberId) ||
+        (pair && body.cardId && body.cardId !== cardId)) {
       throw error(400, 'Choose a board member and one or more weekdays');
     }
     const [card, members] = await Promise.all([
@@ -100,7 +103,7 @@ async function handler(req, res) {
     ]);
     if (card.idBoard !== boardId || card.closed) throw error(400, 'Card is not open on this board');
     if (!members.some(m => m.id === memberId)) throw error(400, 'Member is not on this board');
-    const assignment = { id: req.method === 'PUT' ? previous.id : cardId + ':' + memberId,
+    const assignment = { id: req.method === 'PUT' ? body.id : cardId + ':' + memberId,
       cardId, cardName: card.name, cardUrl: card.shortUrl,
       memberId, dates };
     await store.update(boardId, assignments => {
@@ -110,7 +113,7 @@ async function handler(req, res) {
         return { assignments: [...assignments, assignment] };
       }
       if (index === -1) throw error(404, 'Assignment not found');
-      if (JSON.stringify(assignments[index]) !== JSON.stringify(previous)) {
+      if (assignments[index].cardId !== cardId || assignments[index].memberId !== memberId) {
         throw error(409, 'Planning changed; please reload and try again');
       }
       const updated = assignments.slice();

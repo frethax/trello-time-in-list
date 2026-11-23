@@ -1,8 +1,19 @@
 /* Shared, same-origin client for the admin-gated planning API. */
-function kbPlanningRequest(token, boardId, method, body, cardId, fresh) {
+// Planning reads are served from the Vercel Blob CDN cache, which can lag an
+// overwrite by up to ~60s. After this browser saves, read origin for a short
+// window so the user sees their own change (even in a reopened card iframe).
+var KB_PLAN_FRESH_MS = 90 * 1000;
+function kbPlanningWriteKey(boardId) { return 'kbPlanWrite:' + boardId; }
+function kbPlanningRecentWrite(boardId) {
+  try {
+    var at = Number(sessionStorage.getItem(kbPlanningWriteKey(boardId)));
+    return at > 0 && Date.now() - at < KB_PLAN_FRESH_MS;
+  } catch (e) { return false; }
+}
+function kbPlanningRequest(token, boardId, method, body, cardId) {
   var query = '?boardId=' + encodeURIComponent(boardId) +
     (cardId ? '&cardId=' + encodeURIComponent(cardId) : '') +
-    (fresh ? '&fresh=1' : '');
+    (method === 'GET' && kbPlanningRecentWrite(boardId) ? '&fresh=1' : '');
   return fetch('/api/resource-planning' + query, {
     method: method,
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
@@ -11,6 +22,9 @@ function kbPlanningRequest(token, boardId, method, body, cardId, fresh) {
   }).then(function(response) {
     return response.json().then(function(data) {
       if (!response.ok) { var e = new Error(data.error || 'Planning request failed'); e.status = response.status; throw e; }
+      if (method !== 'GET') {
+        try { sessionStorage.setItem(kbPlanningWriteKey(boardId), String(Date.now())); } catch (e) { /* storage blocked */ }
+      }
       return data;
     });
   });
@@ -70,7 +84,7 @@ function kbResourceCard(t) {
       if (!force && lastLoadedAt && Date.now() - lastLoadedAt < LOAD_REFRESH_MS) {
         return Promise.resolve();
       }
-      pendingLoad = kbPlanningRequest(token, boardId, 'GET', null, cardId, !!force).then(function(data) {
+      pendingLoad = kbPlanningRequest(token, boardId, 'GET', null, cardId).then(function(data) {
         lastLoadedAt = Date.now();
         form.hidden = false;
         list.hidden = false;
@@ -127,8 +141,10 @@ function kbResourceCard(t) {
           }
           remove.disabled = true;
           kbPlanningRequest(token, boardId, 'DELETE', { id: a.id }).then(function() {
-            status.textContent = 'Plan deleted.'; status.className = 'kb-plan-status';
-            reset(); return load(true);
+            // Apply the result locally instead of re-reading Blob.
+            assignments = assignments.filter(function(x) { return x.id !== a.id; });
+            reset(); renderList(); renderCalendar();
+            status.textContent = 'Plan deleted.'; status.className = 'kb-plan-status'; resize();
           }).catch(showError).finally(function() { remove.disabled = false; });
         });
         actions.append(edit, remove); row.append(info, actions); list.appendChild(row);
@@ -204,9 +220,12 @@ function kbResourceCard(t) {
       var existing = currentAssignment();
       var body = { memberId: member.value, dates: dates, cardId: cardId };
       if (existing) body.id = existing.id;
-      kbPlanningRequest(token, boardId, existing ? 'PUT' : 'POST', body).then(function() {
-        status.textContent = 'Selected days saved.'; status.className = 'kb-plan-status';
-        reset(); return load(true);
+      kbPlanningRequest(token, boardId, existing ? 'PUT' : 'POST', body).then(function(data) {
+        // The response carries the saved assignment; no extra Blob read.
+        assignments = assignments.filter(function(x) { return x.id !== data.assignment.id; })
+          .concat([data.assignment]);
+        reset(); renderList(); renderCalendar();
+        status.textContent = 'Selected days saved.'; status.className = 'kb-plan-status'; resize();
       }).catch(showError).finally(function() { submit.disabled = false; });
     });
     panel._kbResourceLoad = function() {
