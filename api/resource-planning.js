@@ -22,6 +22,27 @@ async function trello(path, token) {
 
 function send(res, status, data) { res.status(status).json(data); }
 
+// Documents written before the CDN-cache fix carry max-age=60, so the cache
+// expires every minute and reads keep missing (each miss is a billed Blob
+// Simple Operation). Rewrite such a document once with the default
+// (one month) max-age. Remember per instance to avoid repeat rewrites while
+// the CDN still serves the old copy.
+const MIN_CACHE_SECONDS = 24 * 60 * 60;
+const refreshedBoards = new Set();
+function hasShortCache(cacheControl) {
+  const maxAge = /max-age=(\d+)/.exec(cacheControl || '');
+  return !!maxAge && Number(maxAge[1]) < MIN_CACHE_SECONDS;
+}
+async function refreshShortCache(boardId, stored) {
+  if (!stored.exists || !hasShortCache(stored.cacheControl) || refreshedBoards.has(boardId)) return;
+  refreshedBoards.add(boardId);
+  try {
+    await store.update(boardId, assignments => ({ assignments }));
+  } catch (e) {
+    refreshedBoards.delete(boardId); // Try again on a later request.
+  }
+}
+
 async function handler(req, res) {
   res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('Vary', 'Authorization');
@@ -58,6 +79,7 @@ async function handler(req, res) {
         trello('/boards/' + boardId + '/members?fields=id,fullName,username', token),
         cardId ? Promise.resolve(null) : trello('/boards/' + boardId + '/cards/all?fields=id,name,shortUrl,closed', token)
       ]);
+      await refreshShortCache(boardId, stored);
       const currentCards = new Map((cards || []).map(c => [c.id, c]));
       const assignments = stored.assignments.filter(a => !cardId || a.cardId === cardId).map(a => {
         const card = currentCards.get(a.cardId);
@@ -128,3 +150,4 @@ async function handler(req, res) {
 }
 
 module.exports = handler;
+module.exports.hasShortCache = hasShortCache;

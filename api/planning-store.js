@@ -16,7 +16,8 @@ function createStore(client = blob) {
     if (document.version !== 1 || !Array.isArray(document.assignments)) {
       throw new Error('Invalid planning document');
     }
-    return { assignments: document.assignments, etag: result.blob.etag, exists: true };
+    return { assignments: document.assignments, etag: result.blob.etag, exists: true,
+      cacheControl: result.blob.cacheControl || '' };
   }
 
   async function metadata(boardId) {

@@ -200,3 +200,43 @@ test('conditional writes use stable Blob metadata even when GET reports a differ
   assert.deepEqual(written.assignments.map(a => a.id), ['existing-2', 'new']);
   assert.equal(headCalls, 4);
 });
+
+test('GET rewrites a board document once when it still has a short CDN max-age', async () => {
+  const originalFetch = global.fetch;
+  const originalRead = store.read, originalUpdate = store.update;
+  const originalEnv = { TRELLO_API_KEY: process.env.TRELLO_API_KEY, BLOB_STORE_ID: process.env.BLOB_STORE_ID };
+  process.env.TRELLO_API_KEY = 'test-key';
+  process.env.BLOB_STORE_ID = 'test-store';
+  const board = 'f'.repeat(24);
+  let updates = 0, cacheControl = 'public, max-age=60';
+  store.read = async () => ({ assignments: [{ id: 'a', cardId }], exists: true, cacheControl });
+  store.update = async (_, change) => {
+    updates++;
+    assert.deepEqual(change([{ id: 'a', cardId }]).assignments, [{ id: 'a', cardId }]);
+  };
+  global.fetch = async url => {
+    const path = String(url);
+    let result;
+    if (path.includes('/members/me')) result = { id: adminId };
+    else if (path.includes('/memberships')) result = [{ idMember: adminId, memberType: 'admin' }];
+    else if (path.includes('/members')) result = [];
+    else result = [];
+    return { ok: true, json: async () => result };
+  };
+  const get = () => handler({ method: 'GET', query: { boardId: board },
+    headers: { authorization: 'Bearer test-token-12345678901234567890' } },
+    { setHeader() {}, status() { return this; }, json() {} });
+  try {
+    await get(); await get();
+    assert.equal(updates, 1);
+    assert.equal(handler.hasShortCache('public, max-age=2592000'), false);
+    assert.equal(handler.hasShortCache(''), false);
+  } finally {
+    global.fetch = originalFetch;
+    store.read = originalRead;
+    store.update = originalUpdate;
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
+});
