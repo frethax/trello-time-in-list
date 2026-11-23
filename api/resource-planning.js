@@ -54,7 +54,7 @@ async function handler(req, res) {
       const cardId = req.query.cardId;
       if (cardId && (typeof cardId !== 'string' || !ID.test(cardId))) throw error(400, 'Invalid card');
       const [stored, members, cards] = await Promise.all([
-        store.read(boardId),
+        store.read(boardId, { fresh: req.query.fresh === '1' }),
         trello('/boards/' + boardId + '/members?fields=id,fullName,username', token),
         cardId ? Promise.resolve(null) : trello('/boards/' + boardId + '/cards/all?fields=id,name,shortUrl,closed', token)
       ]);
@@ -75,7 +75,7 @@ async function handler(req, res) {
           !/^(?:[0-9a-f]{24}:[0-9a-f]{24}|[0-9a-f-]{36})$/i.test(body.id)) {
         throw error(400, 'Invalid assignment');
       }
-      const stored = await store.read(boardId);
+      const stored = await store.read(boardId, { fresh: true });
       var previous = stored.assignments.find(a => a.id === body.id);
       if (!previous) throw error(404, 'Assignment not found');
       if (req.method === 'DELETE') {

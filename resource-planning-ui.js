@@ -1,7 +1,8 @@
 /* Shared, same-origin client for the admin-gated planning API. */
-function kbPlanningRequest(token, boardId, method, body, cardId) {
+function kbPlanningRequest(token, boardId, method, body, cardId, fresh) {
   var query = '?boardId=' + encodeURIComponent(boardId) +
-    (cardId ? '&cardId=' + encodeURIComponent(cardId) : '');
+    (cardId ? '&cardId=' + encodeURIComponent(cardId) : '') +
+    (fresh ? '&fresh=1' : '');
   return fetch('/api/resource-planning' + query, {
     method: method,
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
@@ -69,7 +70,7 @@ function kbResourceCard(t) {
       if (!force && lastLoadedAt && Date.now() - lastLoadedAt < LOAD_REFRESH_MS) {
         return Promise.resolve();
       }
-      pendingLoad = kbPlanningRequest(token, boardId, 'GET', null, cardId).then(function(data) {
+      pendingLoad = kbPlanningRequest(token, boardId, 'GET', null, cardId, !!force).then(function(data) {
         lastLoadedAt = Date.now();
         form.hidden = false;
         list.hidden = false;
@@ -211,8 +212,10 @@ function kbResourceCard(t) {
     panel._kbResourceLoad = function() {
       return t.getRestApi().getToken().then(function(currentToken) {
         if (!currentToken) { panel.hidden = true; return; }
+        // A renewed token can change the viewer's access, so always reload.
+        var changed = currentToken !== token;
         token = currentToken;
-        return load();
+        return load(changed);
       });
     };
     load();

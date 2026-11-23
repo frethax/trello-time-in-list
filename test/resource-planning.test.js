@@ -127,6 +127,7 @@ test('private Blob store retries a concurrent board update without losing assign
   class BlobPreconditionFailedError extends Error {}
   class BlobNotFoundError extends Error {}
   let document = null, etag = 0, conflictOnce = true;
+  const getCalls = [];
   const fakeBlob = {
     BlobPreconditionFailedError, BlobNotFoundError,
     async head() {
@@ -136,7 +137,7 @@ test('private Blob store retries a concurrent board update without losing assign
     async get(path, options) {
       assert.match(path, /^kanbrain\/planning\/v1\/preview\//);
       assert.equal(options.access, 'private');
-      assert.equal(options.useCache, false);
+      getCalls.push(options.useCache);
       return document && { stream: new Response(JSON.stringify(document)).body, blob: { etag: String(etag) } };
     },
     async put(path, value, options) {
@@ -156,7 +157,10 @@ test('private Blob store retries a concurrent board update without losing assign
   const blobStore = store.createStore(fakeBlob);
   await blobStore.update(boardId, assignments => ({ assignments: [...assignments, { id: 'first' }] }));
   await blobStore.update(boardId, assignments => ({ assignments: [...assignments, { id: 'second' }] }));
+  // Writes always read origin; a plain read is served from the CDN cache.
+  assert.ok(getCalls.length && getCalls.every(useCache => useCache === false));
   assert.deepEqual((await blobStore.read(boardId)).assignments.map(a => a.id), ['first', 'other', 'second']);
+  assert.equal(getCalls.at(-1), true);
 });
 
 test('conditional writes use stable Blob metadata even when GET reports a different ETag', async () => {

@@ -6,8 +6,11 @@ function createStore(client = blob) {
     return `kanbrain/planning/v1/${environment}/${boardId}.json`;
   }
 
-  async function read(boardId) {
-    const result = await client.get(pathname(boardId), { access: 'private', useCache: false });
+  // Vercel bills HEAD calls and CDN cache MISSes as Simple Operations; cache
+  // HITs are free. Display reads use the CDN cache (overwrites propagate
+  // within ~60s). Only writes and post-save refreshes bypass it.
+  async function read(boardId, { fresh = false } = {}) {
+    const result = await client.get(pathname(boardId), { access: 'private', useCache: !fresh });
     if (!result) return { assignments: [], etag: null, exists: false };
     const document = JSON.parse(await new Response(result.stream).text());
     if (document.version !== 1 || !Array.isArray(document.assignments)) {
@@ -30,7 +33,7 @@ function createStore(client = blob) {
     // Bracket the origin read so an intervening write cannot pair old content
     // with a newer ETag and accidentally overwrite another admin's changes.
     const before = await metadata(boardId);
-    const current = await read(boardId);
+    const current = await read(boardId, { fresh: true });
     const after = await metadata(boardId);
     if (before?.etag !== after?.etag || current.exists !== !!after?.etag) return null;
     return { assignments: current.assignments, etag: after?.etag || null };
@@ -46,7 +49,7 @@ function createStore(client = blob) {
       const next = change(current.assignments);
       try {
         await client.put(pathname(boardId), JSON.stringify({ version: 1, assignments: next.assignments }), {
-          access: 'private', contentType: 'application/json', cacheControlMaxAge: 60,
+          access: 'private', contentType: 'application/json',
           allowOverwrite: !!current.etag,
           ...(current.etag ? { ifMatch: current.etag } : {})
         });
@@ -58,7 +61,7 @@ function createStore(client = blob) {
         }
         // Two admins can create the first document simultaneously. Retry only
         // if another writer actually created it; otherwise surface the error.
-        if (!current.etag && (await read(boardId)).etag) continue;
+        if (!current.etag && (await read(boardId, { fresh: true })).etag) continue;
         throw e;
       }
     }
