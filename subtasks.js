@@ -42,16 +42,28 @@ function kbParentBadgeText(parent, numCfg, subCfg) {
 }
 
 // ---- Board card cache (card-badges runs once per card) --------------------
-var kbCardsCache = { at: 0, promise: null };
+var kbCardsCache = Object.create(null);
 function kbBoardCards(t) {
-  if (kbCardsCache.promise && Date.now() - kbCardsCache.at < 20000) return kbCardsCache.promise;
-  kbCardsCache.at = Date.now();
-  kbCardsCache.promise = t.cards('id', 'name', 'idShort').catch(function() {
-    kbCardsCache.at = 0; return [];
+  var context = typeof t.getContext === 'function' ? t.getContext() : null;
+  var board = context && context.board;
+  if (!board) return t.cards('id', 'name', 'idShort').catch(function() { return []; });
+  var entry = kbCardsCache[board];
+  if (!entry) entry = kbCardsCache[board] = { at: 0, promise: null, cards: null };
+  if (entry.promise) return entry.promise;
+  if (entry.cards && Date.now() - entry.at < 20000) return Promise.resolve(entry.cards);
+  entry.promise = t.cards('id', 'name', 'idShort').then(function(cards) {
+    entry.cards = cards;
+    entry.at = Date.now();
+    return cards;
+  }).catch(function() {
+    return entry.cards || [];
+  }).then(function(cards) {
+    entry.promise = null;
+    return cards;
   });
-  return kbCardsCache.promise;
+  return entry.promise;
 }
-function kbInvalidateCards() { kbCardsCache.at = 0; }
+function kbInvalidateCards() { kbCardsCache = Object.create(null); }
 
 // ---- Link management -------------------------------------------------------
 function kbGetParent(t, cardId) {
