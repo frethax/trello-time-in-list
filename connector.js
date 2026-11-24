@@ -253,11 +253,14 @@ function kbTimeBadge(card, token, threshold, workdaysOn) {
   var entry = kbTimeCache[key];
   if (!entry) entry = kbTimeCache[key] = { at: 0, date: null, pending: null };
   function current() {
-    return entry.date ? makeBadge(entry.date, threshold, workdaysOn)[0]
-      : { text: '…', color: 'light-gray', refresh: 60 };
+    if (!entry.date) return { text: '…', color: 'light-gray', refresh: 60 };
+    var badge = makeBadge(entry.date, threshold, workdaysOn)[0];
+    if (Date.now() - entry.at >= 60000) badge.refresh = 60;
+    return badge;
   }
   if (entry.date && Date.now() - entry.at < 60000) return Promise.resolve(current());
-  if (!entry.pending) {
+  if (!entry.pending && (!entry.attemptedAt || Date.now() - entry.attemptedAt >= 60000)) {
+    entry.attemptedAt = Date.now();
     entry.pending = fetchJsonWithRetry(
       'https://api.trello.com/1/cards/' + card.id +
       '/actions?filter=updateCard:idList,createCard&limit=1&key=' + API_KEY + '&token=' + token
@@ -270,7 +273,7 @@ function kbTimeBadge(card, token, threshold, workdaysOn) {
       console.warn('Kanbrain: time badge refresh failed', err);
     }).then(function() { entry.pending = null; });
   }
-  if (entry.date) return Promise.resolve(current());
+  if (entry.date || !entry.pending) return Promise.resolve(current());
   return withTimeout(entry.pending.then(current), 4000, current());
 }
 
