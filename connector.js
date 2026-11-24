@@ -52,44 +52,26 @@ TrelloPowerUp.initialize({
           var currentListName = currentListObj ? currentListObj.name : '';
           var setting = listSettings[currentListName] || {};
 
+          kbObserveTimeList(card);
           if (setting.ignore) return [];
 
           if (setting.done) {
-            return [{ text: '✓ Done', color: 'green', refresh: 86400 }];
+            return [{ text: '✓ Done', color: 'green' }];
           }
 
-          // Single request instead of two sequential ones: ask for whichever
-          // is more recent, the last "moved to this list" or the "card
-          // created" action. If the card has ever moved, that move is
-          // necessarily the newer of the two, so this is equivalent to the
-          // old "try move, fall back to create" logic but at half the API
-          // traffic — which was the actual source of the rate-limit bursts.
-          return fetchJsonWithRetry(
-            'https://api.trello.com/1/cards/' + card.id +
-            '/actions?filter=updateCard:idList,createCard&limit=1&key=' + API_KEY + '&token=' + token
-          )
-          .then(function(data) {
-            var dateStr = (data && data.length) ? data[0].date : null;
-            if (!dateStr) return [];
-            return makeBadge(dateStr, setting.threshold, workdaysOn);
-          });
+          // Keep the capability response independent of slow REST requests.
+          // Trello refreshes just this dynamic badge rather than all badges.
+          return [{ dynamic: function() {
+            return kbTimeBadge(card, token, setting.threshold, workdaysOn);
+          }}];
         });
       })
       .catch(function(err) {
-        // Don't silently blank the badge on a failed/rate-limited request —
-        // surface a short-lived placeholder so Trello re-invokes this soon
-        // and the badge self-heals without the user needing to notice/retry.
-        console.warn('Kanbrain: card-badges failed, will retry shortly', err);
-        return retryPlaceholderBadge();
+        console.warn('Kanbrain: card-badges context failed', err);
+        return [];
       });
 
-    // Belt-and-suspenders: guarantee this capability call resolves quickly
-    // no matter what. On a board with many cards, a backed-up request queue
-    // could otherwise leave this promise pending long enough that Trello
-    // gives up waiting and shows nothing at all — which looked like "badges
-    // appeared, then all vanished". Racing against a timeout means every
-    // card always gets *something* back: real data, or a retry placeholder.
-    var timePart = withTimeout(work, 9000, retryPlaceholderBadge());
+    var timePart = work;
     var subtaskPart = kbSubtaskBadges(t);
     return Promise.all([numberPart, subtaskPart, timePart]).then(function(parts) {
       return parts[0].concat(parts[1] || [], parts[2] || []);
@@ -253,6 +235,43 @@ function withTimeout(promise, ms, fallbackValue) {
 // all re-poll at the exact same moment and recreate the burst.
 function retryPlaceholderBadge() {
   return [{ text: '…', color: 'light-gray', refresh: 15 + Math.floor(Math.random() * 30) }];
+}
+
+// Cache action timestamps, not formatted badges. List changes use a new
+// cache entry; failures retain the last timestamp for the same list.
+var kbTimeCache = Object.create(null);
+var kbTimeLastList = Object.create(null);
+function kbObserveTimeList(card) {
+  var previous = kbTimeLastList[card.id];
+  if (previous !== card.idList) {
+    if (previous) delete kbTimeCache[card.id + ':' + previous];
+    kbTimeLastList[card.id] = card.idList;
+  }
+}
+function kbTimeBadge(card, token, threshold, workdaysOn) {
+  var key = card.id + ':' + card.idList;
+  var entry = kbTimeCache[key];
+  if (!entry) entry = kbTimeCache[key] = { at: 0, date: null, pending: null };
+  function current() {
+    return entry.date ? makeBadge(entry.date, threshold, workdaysOn)[0]
+      : { text: '…', color: 'light-gray', refresh: 60 };
+  }
+  if (entry.date && Date.now() - entry.at < 60000) return Promise.resolve(current());
+  if (!entry.pending) {
+    entry.pending = fetchJsonWithRetry(
+      'https://api.trello.com/1/cards/' + card.id +
+      '/actions?filter=updateCard:idList,createCard&limit=1&key=' + API_KEY + '&token=' + token
+    ).then(function(data) {
+      if (data && data.length && data[0].date) {
+        entry.date = data[0].date;
+        entry.at = Date.now();
+      }
+    }).catch(function(err) {
+      console.warn('Kanbrain: time badge refresh failed', err);
+    }).then(function() { entry.pending = null; });
+  }
+  if (entry.date) return Promise.resolve(current());
+  return withTimeout(entry.pending.then(current), 4000, current());
 }
 
 function makeBadge(dateStr, threshold, workdaysOn) {
