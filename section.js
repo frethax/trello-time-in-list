@@ -155,7 +155,6 @@
 
   t.render(function() {
     renderSubbar();
-    kbResourceCard(t);
     return t.get('board', 'shared', 'language')
       .then(function(lang) {
         var L = STRINGS[lang] || STRINGS['en'];
@@ -188,7 +187,6 @@
     btn.addEventListener('click', function() {
       t.getRestApi().authorize({ scope: 'read', expiration: 'never' })
         .then(function() {
-          kbResourceCard(t);
           return t.getRestApi().getToken().then(function(token) {
             if (token) return loadCard(token, L);
             showAuth(L);
