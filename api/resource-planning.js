@@ -44,6 +44,9 @@ async function refreshShortCache(boardId, stored) {
 }
 
 async function handler(req, res) {
+  // Resource Planner temporarily disabled to stop all Blob operations.
+  // Preserve stored documents for possible recovery; do not touch Blob.
+  return send(res, 503, { error: 'Resource Planner is temporarily disabled.' });
   res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('Vary', 'Authorization');
   if (!['GET', 'POST', 'PUT', 'DELETE'].includes(req.method)) {
